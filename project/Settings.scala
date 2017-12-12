@@ -65,6 +65,7 @@ object Settings {
     "-Xlint:type-parameter-shadow",
     "-Xlint:unsound-match",
     "-Yno-adapted-args",
+    "-Ypartial-unification",             // Enable partial unification in type constructor inference
     "-Ywarn-dead-code",
     "-Ywarn-numeric-widen",
     "-Ywarn-value-discard",
@@ -83,9 +84,9 @@ object Settings {
   lazy val assemblySettings = Seq(
     assemblyJarName in assembly := name.value + "-" + version.value + ".jar",
     test in assembly := {},
-    assemblyMergeStrategy in assembly := customMergeStrategy.value,
-    logLevel in assembly :=
-      sys.env.get("ASSEMBLY_LOG_LEVEL").flatMap(Level.apply).getOrElse((logLevel in assembly).value)
+    assemblyMergeStrategy in assembly := customMergeStrategy.value//,
+    //logLevel in assembly :=
+      //sys.env.get("ASSEMBLY_LOG_LEVEL").flatMap(Level.apply).getOrElse((logLevel in assembly).value)
   )
 
   val ScalaVersion211 = "2.11.11"
@@ -94,10 +95,11 @@ object Settings {
   val sharedSettings = ReleasePlugin.projectSettings ++
     cromwellVersionWithGit ++ publishingSettings ++ List(
     organization := "org.broadinstitute",
-    scalaVersion := ScalaVersion,
+    //scalaVersion := ScalaVersion,
     resolvers ++= commonResolvers,
     parallelExecution := false,
-    dependencyOverrides ++= cromwellDependencyOverrides.toSet, // TODO: Remove .toSet for SBT 1.x
+    dependencyOverrides ++= cromwellDependencyOverrides.toSet//, // TODO: Remove .toSet for SBT 1.x
+    /*
     scalacOptions ++= (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 12)) =>
         // The default scalacOptions includes console-hostile options.  These options are overridden specifically below
@@ -107,12 +109,13 @@ object Settings {
         // Scala 2.11 takes a simplified set of options
         baseSettings
       case wut => throw new NotImplementedError(s"Found unsupported Scala version $wut. WOM does not support versions of Scala other than 2.11 or 2.12.")
-    }),
+    }
+    )*/,
     // http://stackoverflow.com/questions/31488335/scaladoc-2-11-6-fails-on-throws-tag-with-unable-to-find-any-member-to-link#31497874
     scalacOptions in(Compile, doc) ++= baseSettings ++ List("-no-link-warnings"),
     // No console-hostile options, otherwise the console is effectively unusable.
     // https://github.com/sbt/sbt/issues/1815
-    scalacOptions in(Compile, console) --= consoleHostileSettings,
+    scalacOptions in(Compile, console) --= consoleHostileSettings//,
     //
     /*
     Only enable coverage for 2.12.
@@ -124,13 +127,15 @@ object Settings {
     one can run
       `sbt coverage test coverageReport`
      */
+  /*
     coverageEnabled := (CrossVersion.partialVersion(scalaVersion.value) match {
       case Some((2, 12)) => sys.env.get("ENABLE_COVERAGE").exists(_.toBoolean)
       case Some((2, 11)) => false
       case wut => throw new NotImplementedError(
         s"Found unsupported Scala version $wut. WOM does not support versions of Scala other than 2.11 or 2.12.")
-    }),
-    addCompilerPlugin("org.scalamacros" % "paradise" % paradiseV cross CrossVersion.full)
+    }
+    )*/,
+    addCompilerPlugin("org.scalamacros" % "paradise" % paradiseV cross CrossVersion.patch)
   )
 
   val crossVersionSettings = List(
