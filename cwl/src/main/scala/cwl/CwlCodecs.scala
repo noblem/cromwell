@@ -16,11 +16,20 @@ object CwlCodecs {
   implicit val scatterMethodDecoder = Decoder.enumDecoder(ScatterMethod)
   implicit val linkMergeMethodDecoder = Decoder.enumDecoder(LinkMergeMethod)
 
-  //According to automatic derivation, these instances should not be required.  But
-  //removing these breaks decodeCwl, so...
-  implicit val wfD = implicitly[Decoder[Workflow]]
-  implicit val cltD = implicitly[Decoder[CommandLineTool]]
-  implicit val etD = implicitly[Decoder[ExpressionTool]]
+  def decodeCwl(cwlWorkflow: String): Either[NonEmptyList[String], Cwl] = {
+    //try to parse both and combine errors if they fail
+    (decode[Workflow](cwlWorkflow), decode[CommandLineTool](cwlWorkflow), decode[ExpressionTool](cwlWorkflow)) match {
+      case (Right(wf), _, _) => Coproduct[Cwl](wf).asRight
+      case (_, Right(clt), _) => Coproduct[Cwl](clt).asRight
+      case (_, _, Right(et)) => Coproduct[Cwl](et).asRight
+      case (Left(wfError), Left(cltError), Left(etError)) =>
+        NonEmptyList.of(
+          s"Workflow parsing error: ${wfError.show}",
+          s"Command Line Tool parsing error: ${cltError.show}",
+          s"Expression Tool parsing error: ${etError.show}"
+        ).asLeft
+    }
+  }
 
-  def decodeCwl(in: String): Checked[CwlFile] = decodeAccumulating[CwlFile](in).leftMap(_.map(_.getMessage).map(s"error parsing: $in" + _)).toEither
+
 }
