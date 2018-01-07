@@ -7,7 +7,7 @@ import wom.values.{WomFile, WomValue}
 
 case class CommandOutputExpression(outputBinding: CommandOutputBinding,
                                    override val cwlExpressionType: WomType,
-                                   override val inputs: Set[String],
+                                   override val inputNames: Set[String],
                                    secondaryFilesOption: Option[SecondaryFiles] = None,
                                    formatOption: Option[StringOrExpression] = None //only valid when type: File
                                   ) extends CwlWomExpression {

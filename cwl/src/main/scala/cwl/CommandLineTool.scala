@@ -90,28 +90,34 @@ case class CommandLineTool private(
     requirement.fold(RequirementToAttributeMap).apply(inputNames)
   }
 
-  def buildTaskDefinition(validator: RequirementsValidator): ErrorOr[CallableTaskDefinition] = {
-    validateRequirementsAndHints(validator) map { requirementsAndHints =>
-      val id = this.id
+  private def environmentDefs(requirementsAndHints: List[Requirement]): ErrorOr[List[EnvironmentDef]] = List.empty[EnvironmentDef].validNel
 
-      val commandTemplate: Seq[CommandPart] = baseCommand.toSeq.flatMap(_.fold(BaseCommandToCommandParts)) ++
-        arguments.toSeq.flatMap(_.map(_.fold(ArgumentToCommandPart))) ++
-        CommandLineTool.orderedForCommandLine(inputs).map(InputParameterCommandPart.apply)
+  def buildTaskDefinition(validator: RequirementsValidator): ErrorOr[CallableTaskDefinition] = for {
+    requirementsAndHints <- validateRequirementsAndHints(validator)
+    environment <- environmentDefs(requirementsAndHints)
+  } yield buildCallableTaskDefinition(requirementsAndHints, environment)
 
-      // This is basically doing a `foldMap` but can't actually be a `foldMap` because:
-      // - There is no monoid instance for `WomExpression`s.
-      // - We want to fold from the right so the hints and requirements with the lowest precedence are processed first
-      //   and later overridden if there are duplicate hints or requirements of the same type with higher precedence.
-      val finalAttributesMap = (requirementsAndHints ++ DefaultDockerRequirement).foldRight(Map.empty[String, WomExpression])({
-        case (requirement, attributesMap) => attributesMap ++ processRequirement(requirement)
-      })
+  private def buildCallableTaskDefinition(requirementsAndHints: List[Requirement], environment: List[EnvironmentDef]) = {
+    val id = this.id
 
-      val runtimeAttributes: RuntimeAttributes = RuntimeAttributes(finalAttributesMap)
+    val commandTemplate: Seq[CommandPart] = baseCommand.toSeq.flatMap(_.fold(BaseCommandToCommandParts)) ++
+      arguments.toSeq.flatMap(_.map(_.fold(ArgumentToCommandPart))) ++
+      CommandLineTool.orderedForCommandLine(inputs).map(InputParameterCommandPart.apply)
 
-      val meta: Map[String, String] = Map.empty
-      val parameterMeta: Map[String, String] = Map.empty
+    // This is basically doing a `foldMap` but can't actually be a `foldMap` because:
+    // - There is no monoid instance for `WomExpression`s.
+    // - We want to fold from the right so the hints and requirements with the lowest precedence are processed first
+    //   and later overridden if there are duplicate hints or requirements of the same type with higher precedence.
+    val finalAttributesMap = (requirementsAndHints ++ DefaultDockerRequirement).foldRight(Map.empty[String, WomExpression])({
+      case (requirement, attributesMap) => attributesMap ++ processRequirement(requirement)
+    })
 
-      /*
+    val runtimeAttributes: RuntimeAttributes = RuntimeAttributes(finalAttributesMap)
+
+    val meta: Map[String, String] = Map.empty
+    val parameterMeta: Map[String, String] = Map.empty
+
+    /*
     quoted from: http://www.commonwl.org/v1.0/CommandLineTool.html#CommandOutputBinding :
 
     For inputs and outputs, we only keep the variable name in the definition
@@ -145,37 +151,36 @@ case class CommandLineTool private(
         case other => throw new NotImplementedError(s"command input parameters such as $other are not yet supported")
       }.toList
 
-      def stringOrExpressionToString(soe: Option[StringOrExpression]): Option[String] = soe flatMap {
-        case StringOrExpression.String(str) => Some(str)
-        case StringOrExpression.Expression(_) => None // ... for now!
-      }
-
-      // The try will succeed if this is a task within a step. If it's a standalone file, the ID will be the file,
-      // so the filename is the fallback.
-      def taskName = Try(FullyQualifiedName(id).id).getOrElse(Paths.get(id).getFileName.toString)
-
-      val adHocFileCreations: Set[WomExpression] = (for {
-        requirements <- requirements.getOrElse(Array.empty[Requirement])
-        initialWorkDirRequirement <- requirements.select[InitialWorkDirRequirement].toArray
-        listing <- initialWorkDirRequirement.listings
-      } yield InitialWorkDirFileGeneratorExpression(listing)).toSet[WomExpression]
-
-      CallableTaskDefinition(
-        taskName,
-        commandTemplate,
-        runtimeAttributes,
-        meta,
-        parameterMeta,
-        outputs,
-        inputDefinitions,
-        // TODO: This doesn't work in all cases and it feels clunky anyway - find a way to sort that out
-        prefixSeparator = "#",
-        commandPartSeparator = " ",
-        stdoutRedirection = stringOrExpressionToString(stdout),
-        stderrRedirection = stringOrExpressionToString(stderr),
-        adHocFileCreation = adHocFileCreations
-      )
+    def stringOrExpressionToString(soe: Option[StringOrExpression]): Option[String] = soe flatMap {
+      case StringOrExpression.String(str) => Some(str)
+      case StringOrExpression.Expression(_) => None // ... for now!
     }
+
+    // The try will succeed if this is a task within a step. If it's a standalone file, the ID will be the file,
+    // so the filename is the fallback.
+    def taskName = Try(FullyQualifiedName(id).id).getOrElse(Paths.get(id).getFileName.toString)
+
+    val adHocFileCreations: Set[WomExpression] = (for {
+      requirements <- requirements.getOrElse(Array.empty[Requirement])
+      initialWorkDirRequirement <- requirements.select[InitialWorkDirRequirement].toArray
+      listing <- initialWorkDirRequirement.listings
+    } yield InitialWorkDirFileGeneratorExpression(listing)).toSet[WomExpression]
+
+    CallableTaskDefinition(
+      taskName,
+      commandTemplate,
+      runtimeAttributes,
+      meta,
+      parameterMeta,
+      outputs,
+      inputDefinitions,
+      // TODO: This doesn't work in all cases and it feels clunky anyway - find a way to sort that out
+      prefixSeparator = "#",
+      commandPartSeparator = " ",
+      stdoutRedirection = stringOrExpressionToString(stdout),
+      stderrRedirection = stringOrExpressionToString(stderr),
+      adHocFileCreation = adHocFileCreations
+    )
   }
 
   def asCwl = Coproduct[Cwl](this)

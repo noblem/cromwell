@@ -26,7 +26,7 @@ final case class WorkflowStepInputExpression(input: WorkflowStepInput, override 
   override def evaluateFiles(inputTypes: Map[String, WomValue], ioFunctionSet: IoFunctionSet, coerceTo: WomType) =
     Set.empty[WomFile].validNel
 
-  override def inputs = graphInputs ++ input.source.toSet.flatMap{ inputSource: InputSource => inputSource match {
+  override def inputNames = graphInputs ++ input.source.toSet.flatMap{ inputSource: InputSource => inputSource match {
     case WorkflowStepInputSource.String(s) => Set(FullyQualifiedName(s).id)
     case WorkflowStepInputSource.StringArray(sa) => sa.map(FullyQualifiedName(_).id).toSet
   }}

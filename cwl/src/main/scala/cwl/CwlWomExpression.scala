@@ -21,7 +21,7 @@ trait CwlWomExpression extends WomExpression {
 }
 
 case class JobPreparationExpression(expression: Expression,
-                                    override val inputs: Set[String]) extends CwlWomExpression {
+                                    override val inputNames: Set[String]) extends CwlWomExpression {
   val cwlExpressionType = WomAnyType
 
   override def sourceString = expression match {
@@ -108,5 +108,5 @@ final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEn
   /**
     * We already get all of the task inputs when evaluating, and we don't need to highlight anything else
     */
-  override def inputs: Set[String] = Set.empty
+  override def inputNames: Set[String] = Set.empty
 }
