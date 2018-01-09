@@ -28,6 +28,7 @@ import cromwell.services.keyvalue.KeyValueServiceActor._
 import cromwell.services.keyvalue.KvClient
 import cromwell.services.metadata.CallMetadataKeys
 import net.ceedubs.ficus.Ficus._
+import wom.expression.WomExpression
 import wom.values._
 import wom.{CommandSetupSideEffectFile, InstantiatedCommand, WomFileMapper}
 
@@ -205,6 +206,8 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     val globFiles: ErrorOr[List[WomGlobFile]] =
       backendEngineFunctions.findGlobOutputs(call, jobDescriptor)
 
+    lazy val environmentVariables = instantiatedCommand.environmentVariables map { case (k, v) => s"""$k="$v"""" } mkString("", "\n", "\n")
+
     // The `tee` trickery below is to be able to redirect to known filenames for CWL while also streaming
     // stdout and stderr for PAPI to periodically upload to cloud storage.
     // https://stackoverflow.com/questions/692000/how-do-i-write-stderr-to-a-file-while-using-tee-with-a-pipe
@@ -225,6 +228,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
         |)
         |(
         |cd $cwd
+        |ENVIRONMENT_VARIABLES
         |INSTANTIATED_COMMAND
         |) > >(tee $stdoutPath) 2> >(tee $stderrPath >&2)
         |echo $$? > $rcTmpPath
@@ -237,6 +241,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
         |""".stripMargin
       .replace("SCRIPT_PREAMBLE", scriptPreamble)
       .replace("INSTANTIATED_COMMAND", instantiatedCommand.commandString)
+      .replace("ENVIRONMENT_VARIABLES", environmentVariables)
       .replace("SCRIPT_EPILOGUE", scriptEpilogue))
   }
 
@@ -249,9 +254,9 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     val adHocFileCreationInputs = jobDescriptor.evaluatedTaskInputs.map { case (k,v) => k.localName.value -> v }
 
     def validateAdHocFile(value: WomValue): ErrorOr[List[WomFile]] = value match {
-        case f: WomFile => List(f).valid
-        case a: WomArray => a.value.toList.traverse(validateAdHocFile).map(_.flatten)
-        case other => s"Ad-hoc file creation expression invalidly created a ${other.womType.toDisplayString} result.".invalidNel
+      case f: WomFile => List(f).valid
+      case a: WomArray => a.value.toList.traverse(validateAdHocFile).map(_.flatten)
+      case other => s"Ad-hoc file creation expression invalidly created a ${other.womType.toDisplayString} result.".invalidNel
     }
 
     val adHocFileCreations: ErrorOr[List[WomFile]] = jobDescriptor.taskCall.callable.adHocFileCreation.toList.traverse {
@@ -262,7 +267,6 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
       f => CommandSetupSideEffectFile(f,  Option(adHocFileLocalization(f)))
     }}
 
-
     val instantiatedCommandValidation = Command.instantiate(
       jobDescriptor,
       backendEngineFunctions,
@@ -271,9 +275,16 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
       runtimeEnvironment
     )
 
+    def evaluateEnvironmentExpression(nameAndExpression: (String, WomExpression)): ErrorOr[(String, String)] = {
+      val (name, expression) = nameAndExpression
+      expression.evaluateValue(adHocFileCreationInputs, backendEngineFunctions) map { name -> _.valueString }
+    }
+
+    val environmentVariables = jobDescriptor.taskCall.callable.environmentExpressions.toList traverse evaluateEnvironmentExpression
+
     // TODO CWL: toTry.get here. Is throwing an exception the best way to indicate command generation failure?
-    ((adHocFileCreationSideEffectFiles, instantiatedCommandValidation) mapN { (adHocFiles, command) =>
-        command.copy(createdFiles = command.createdFiles ++ adHocFiles)
+    ((adHocFileCreationSideEffectFiles, instantiatedCommandValidation, environmentVariables) mapN { (adHocFiles, command, env) =>
+        command.copy(createdFiles = command.createdFiles ++ adHocFiles, environmentVariables = env.toMap)
     }).toTry match {
       case Success(ic) => ic
       case Failure(e) => throw new Exception("Failed to evaluate ad hoc files", e)

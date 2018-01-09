@@ -90,14 +90,66 @@ case class CommandLineTool private(
     requirement.fold(RequirementToAttributeMap).apply(inputNames)
   }
 
-  private def environmentDefs(requirementsAndHints: List[Requirement]): ErrorOr[List[EnvironmentDef]] = List.empty[EnvironmentDef].validNel
+  private def environmentDefs(requirementsAndHints: List[Requirement]): ErrorOr[Map[String, WomExpression]] = {
+    // For environment variables we need to make sure that we aren't being asked to evaluate expressions from a containing
+    // workflow step or its containing workflow or anything containing the workflow. The current structure of this code
+    // is not prepared to evaluate those expressions. Actually this is true for attributes too and we're totally not
+    // checking for this condition there. Blurgh.
+    // TODO CWL: for runtime attributes, detect unevaluatable expressions in the containment hierarchy.
+
+    // This traverses all `EnvironmentDef`s within all `EnvVarRequirement`s. The spec doesn't appear to say how to handle
+    // duplicate `envName` keys in a single array of `EnvironmentDef`s; this code gives precedence to the last occurrence.
+    val allEnvVarDefs = for {
+      req <- requirementsAndHints
+      envVarReq <- req.select[EnvVarRequirement].toList
+      // Reverse the defs within an env var requirement so that when we fold from the right below the later defs
+      // will take precedence over the earlier defs.
+      envDef <- envVarReq.envDef.toList.reverse
+    } yield envDef
+
+    // Compact the `EnvironmentDef`s. Don't convert to `WomExpression`s yet, the `StringOrExpression`s need to be
+    // compared to the `EnvVarRequirement`s that were defined on this tool.
+    val effectiveEnvironmentDefs = allEnvVarDefs.foldRight(Map.empty[String, StringOrExpression]) {
+      case (envVarReq, envVarMap) => envVarMap + (envVarReq.envName -> envVarReq.envValue)
+    }
+
+    // These are the effective environment defs irrespective of where they were found in the
+    // Run / WorkflowStep / Workflow containment hierarchy.
+    val effectiveExpressionEnvironmentDefs = effectiveEnvironmentDefs filter { case (_, expr) => expr.select[Expression].isDefined }
+
+    // These are only the environment defs defined on this tool.
+    val cltRequirements = requirements.toList.flatten ++ hints.toList.flatten.flatMap(_.select[Requirement])
+    val cltEnvironmentDefExpressions = (for {
+      cltEnvVarRequirement <- cltRequirements flatMap { _.select[EnvVarRequirement]}
+      cltEnvironmentDef <- cltEnvVarRequirement.envDef.toList
+      expr <- cltEnvironmentDef.envValue.select[Expression].toList
+    } yield expr).toSet
+
+    // If there is an expression in an effective environment def that wasn't defined on this tool then error out since
+    // there isn't currently a way of evaluating it.
+    val unevaluatableEnvironmentDefs = for {
+      (name, stringOrExpression) <- effectiveExpressionEnvironmentDefs.toList
+      expression <- stringOrExpression.select[Expression].toList
+      if !cltEnvironmentDefExpressions.contains(expression)
+    } yield name
+
+    unevaluatableEnvironmentDefs match {
+      case Nil =>
+        // No unevaluatable environment defs => keep on truckin'
+        effectiveEnvironmentDefs.foldRight(Map.empty[String, WomExpression]) { case ((envName, envValue), acc) =>
+          acc + (envName -> envValue.fold(StringOrExpressionToWomExpression).apply(inputNames))
+        }.validNel
+      case xs =>
+        s"Could not evaluate environment variable expressions defined in the call hierarchy of tool $id: ${xs.mkString(", ")}.".invalidNel
+    }
+  }
 
   def buildTaskDefinition(validator: RequirementsValidator): ErrorOr[CallableTaskDefinition] = for {
     requirementsAndHints <- validateRequirementsAndHints(validator)
     environment <- environmentDefs(requirementsAndHints)
   } yield buildCallableTaskDefinition(requirementsAndHints, environment)
 
-  private def buildCallableTaskDefinition(requirementsAndHints: List[Requirement], environment: List[EnvironmentDef]) = {
+  private def buildCallableTaskDefinition(requirementsAndHints: List[Requirement], environmentExpressions: Map[String, WomExpression]) = {
     val id = this.id
 
     val commandTemplate: Seq[CommandPart] = baseCommand.toSeq.flatMap(_.fold(BaseCommandToCommandParts)) ++
@@ -179,7 +231,8 @@ case class CommandLineTool private(
       commandPartSeparator = " ",
       stdoutRedirection = stringOrExpressionToString(stdout),
       stderrRedirection = stringOrExpressionToString(stderr),
-      adHocFileCreation = adHocFileCreations
+      adHocFileCreation = adHocFileCreations,
+      environmentExpressions = environmentExpressions
     )
   }
 
@@ -445,4 +498,14 @@ object CommandLineTool {
     dockerOutputDirectory = None
   )) } toList
 
+}
+
+object StringOrExpressionToWomExpression extends Poly1 {
+  implicit def string: Case.Aux[String, Set[String] => WomExpression] = at[String] { s =>
+    Function.const(ValueAsAnExpression(WomString(s)))
+  }
+
+  implicit def expression: Case.Aux[Expression, Set[String] => WomExpression] = at[Expression] { e => inputNames =>
+    cwl.JobPreparationExpression(e, inputNames)
+  }
 }
