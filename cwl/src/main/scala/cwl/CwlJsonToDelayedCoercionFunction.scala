@@ -73,6 +73,7 @@ private [cwl] object CwlJsonToDelayedCoercionFunction extends Json.Folder[Delaye
       }).map(_.toMap[String, WomValue])
 
       foldedMap.map(WomObject.apply)
+    case WomOptionalType(otherType) => onObject(value).apply(otherType)
     case other => s"Cannot convert an array input value into a non array type: $other".invalidNel
   }
 }
