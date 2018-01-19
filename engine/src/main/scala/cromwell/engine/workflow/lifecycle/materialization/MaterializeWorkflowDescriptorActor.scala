@@ -418,6 +418,7 @@ class MaterializeWorkflowDescriptorActor(serviceRegistryActor: ActorRef,
     for {
       _ <- unzipDependencies
       cwl <- CwlDecoder.decodeAllCwl(cwlFile, source.workflowRoot)
+      _ <- cwl.fold(CheckCwlVersion)
       executable <-  fromEither[IO](cwl.womExecutable(AcceptAllRequirements, Option(source.inputsJson)))
       validatedWomNamespace <- fromEither[IO](validateWomNamespace(executable, ioFunctions))
     } yield validatedWomNamespace

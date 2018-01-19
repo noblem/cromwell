@@ -1,0 +1,13 @@
+name: cwl_version_gate
+testFormat: workflowfailure
+workflowType: CWL
+workflowTypeVersion: draft-3
+
+files {
+  wdl: cwl_version_gate/cwl_version_gate.cwl
+}
+
+metadata {
+  "submittedFiles.workflowType": CWL
+  "submittedFiles.workflowTypeVersion": draft-3
+}

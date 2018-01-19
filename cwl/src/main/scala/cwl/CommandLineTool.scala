@@ -444,7 +444,7 @@ object CommandLineTool {
             hints: Option[Array[Hint]] = None,
             label: Option[String] = None,
             doc: Option[String] = None,
-            cwlVersion: Option[CwlVersion] = Option(CwlVersion.Version1),
+            cwlVersion: Option[CwlVersion] = Option(CwlVersion.Draft3),
             baseCommand: Option[BaseCommand] = None,
             arguments: Option[Array[CommandLineTool.Argument]] = None,
             stdin: Option[StringOrExpression] = None,
