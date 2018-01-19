@@ -30,6 +30,9 @@ case "$TRAVIS_EVENT_TYPE" in
         sbt)
             "${SCRIPT_DIR}"/testSbt.sh
             ;;
+        sbtEleven)
+            "${SCRIPT_DIR}"/testSbtEleven.sh
+            ;;
         checkPublish)
             "${SCRIPT_DIR}"/testCheckPublish.sh
             ;;
