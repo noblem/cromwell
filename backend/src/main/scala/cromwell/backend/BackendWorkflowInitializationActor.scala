@@ -146,6 +146,8 @@ trait BackendWorkflowInitializationActor extends BackendWorkflowLifecycleActor w
     case Abort => abortInitialization()
   }
 
+  type X[A] = ValidatedNel[RuntimeAttributeValidationFailure, A]
+
   /**
     * Our predefined sequence to run during preStart
     */
@@ -154,7 +156,7 @@ trait BackendWorkflowInitializationActor extends BackendWorkflowLifecycleActor w
       defaultRuntimeAttributes <- coerceDefaultRuntimeAttributes(workflowDescriptor.workflowOptions) |> Future.fromTry _
       taskList = calls.toList.map(_.callable).map(t => t.name -> t.runtimeAttributes.attributes)
       _ <- taskList.
-            traverse{
+            traverse[X, Unit]{
               case (name, runtimeAttributes) => validateRuntimeAttributes(name, defaultRuntimeAttributes, runtimeAttributes, runtimeAttributeValidators)
             }.toFuture(errors => RuntimeAttributeValidationFailures(errors.toList))
       _ <- validate()
