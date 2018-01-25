@@ -36,7 +36,11 @@ package object values {
     // Escape any double quote characters in the string and surround with double quotes. The CWL spec doesn't
     // appear to say whether quotes should be of the single or double variety, but the conformance tests clearly
     // expect double quotes to allow for interpolation of environment variables.
-    def shellQuote: String = '"' + s.replaceAll("\"", "\\\"") + '"'
+    def shellDoubleQuote: String = '"' + s.replaceAll("\"", "\\\"") + '"'
+
+    // https://stackoverflow.com/questions/1250079/how-to-escape-single-quotes-within-single-quoted-strings
+    // Little Bobby Tables
+    def shellSingleQuote: String = "'" + s.replaceAll("'", "'\"'\"''") + "'"
   }
 }
 

@@ -14,5 +14,5 @@ case class StringCommandPart(literal: String) extends CommandPart {
                            valueMapper: (WomValue) => WomValue,
                            runtimeEnvironment: RuntimeEnvironment): ErrorOr[List[InstantiatedCommand]] =
     // TODO CWL shellquotes by default, but this shellquotes everything. Only shellquote what should be shellquoted.
-    List(InstantiatedCommand(literal.shellQuote)).validNel
+    List(InstantiatedCommand(literal.shellDoubleQuote)).validNel
 }

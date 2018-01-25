@@ -61,10 +61,10 @@ abstract class CommandLineBindingCommandPart(commandLineBinding: CommandLineBind
       case Some(womValue) => womValue.map(valueMapper).toEither
       case None => "Command line binding has no valueFrom field and no bound value".invalidNelCheck
     }
-    
+
     def applyShellQuote(womValue: WomValue): Checked[WomValue] = commandLineBinding.shellQuote match {
-      case Some(false) | None => womValue.validNelCheck
-      case _ => "Shell quote is unsupported yet".invalidNelCheck
+      case Some(false) => womValue.validNelCheck
+      case _ => WomString(womValue.valueString.shellSingleQuote).validNelCheck
     }
     
     def processValue(womValue: WomValue): List[String] = womValue match {

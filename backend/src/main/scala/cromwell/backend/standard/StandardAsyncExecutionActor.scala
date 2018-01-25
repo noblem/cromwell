@@ -234,7 +234,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
 
     val cwd = commandDirectory
     val rcPath = cwd./(jobPaths.returnCodeFilename)
-    val stdinRedirection = instantiatedCommand.stdinRedirection.map("< " + _.shellQuote).getOrElse("")
+    val stdinRedirection = instantiatedCommand.stdinRedirection.map("< " + _.shellSingleQuote).getOrElse("")
     val stdoutPath = cwd./(jobPaths.stdoutFilename)
     val stderrPath = cwd./(jobPaths.stderrFilename)
     val rcTmpPath = rcPath.plusExt("tmp")
