@@ -1,53 +1,40 @@
-include "application.conf"
-
-akka {
-  loggers = ["akka.event.slf4j.Slf4jLogger"]
-  logging-filter = "akka.event.slf4j.Slf4jLoggingFilter"
-}
-
-call-caching {
-  enabled = false 
-}
-
-system.graceful-server-shutdown = true
+{{with $cromwellAlicloudAuth := vault (printf "secret/dsde/cromwell/common/cromwell-alicloud-auth")}}
+include required(classpath("application"))
 
 backend {
   default = "BCS"
-  
+
   providers {
     BCS {
       actor-factory = "cromwell.backend.impl.bcs.BcsBackendLifecycleActorFactory"
       config {
-        root = ""
-        region = ""
-        access-id = ""
-        access-key = ""
-        
+        root = "oss://broad-test/cromwell-dir"
+        region = "cn-hangzhou"
+        access-id = "{{$cromwellAlicloudAuth.Data.access_id}}"
+        access-key = "{{$cromwellAlicloudAuth.Data.access_key}}"
+
         filesystems {
           oss {
             auth {
-              endpoint = ""
-              access-id = ""
-              access-key = ""
+              endpoint = "oss-cn-hangzhou.aliyuncs.com"
+              access-id = "{{$cromwellAlicloudAuth.Data.access_id}}"
+              access-key = "{{$cromwellAlicloudAuth.Data.access_key}}"
             }
           }
         }
-        
+
         default-runtime-attributes {
           failOnStderr: false
           continueOnReturnCode: 0
-          cluster: ""
-          workerPath: ""
-        } 
+          cluster: "OnDemand ecs.sn1ne.large img-ubuntu"
+          vpc: "192.168.0.0/16"
+          workerPath: ${user.dir}/supportedBackends/bcs/src/main/scala/cromwell/backend/impl/bcs/worker.tar.gz
+          // TODO: ubuntu is not available in alicloud and trips up centaur testing, for now
+          ignoreDocker: true
+        }
       }
     }
   }
 }
 
-database {
-  db.url = "jdbc:mysql://localhost/cromwell_test?rewriteBatchedStatements=true"
-  db.user = "travis"
-  db.password = ""
-  db.driver = "com.mysql.jdbc.Driver"
-  profile = "slick.jdbc.MySQLProfile$"
-}
+{{end}}

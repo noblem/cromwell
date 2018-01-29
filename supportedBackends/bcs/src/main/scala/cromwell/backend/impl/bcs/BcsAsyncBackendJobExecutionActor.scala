@@ -44,7 +44,11 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
   override lazy val commandDirectory: Path = BcsJobPaths.BcsCommandDirectory.resolve(bcsJobPaths.callExecutionRoot.pathWithoutScheme)
 
   private[bcs] lazy val userTag = runtimeAttributes.tag.getOrElse("cromwell")
-  private[bcs] lazy val jobName: String = s"${userTag}_${jobDescriptor.workflowDescriptor.id.shortString}_${jobDescriptor.taskCall.identifier.localName.value}"
+  private[bcs] lazy val jobName: String =
+    List(userTag, jobDescriptor.workflowDescriptor.id.shortString, jobDescriptor.taskCall.identifier.localName.value)
+      .mkString("_")
+      // Avoid "Name ... must only contain characters within [a-zA-Z0-9_-] and not start with [0-9]."
+      .replaceAll("[^a-zA-Z0-9_-]", "_")
 
   override lazy val jobTag: String = jobDescriptor.key.tag
 
