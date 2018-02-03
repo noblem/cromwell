@@ -143,7 +143,7 @@ class ScatterLogicSpec extends FlatSpec with Matchers with TableDrivenPropertyCh
         case i: WomInteger => JsNumber(i.value)
         case f: WomFloat => JsNumber(f.value)
         case b: WomBoolean => JsBoolean(b.value)
-        case f: WomFile => JsString(f.value)
+        case f: WomFile => JsString(f.hostPath)
         case o: WomObjectLike => new JsObject(o.values map {case(k, v) => k -> write(v)})
         case a: WomArray => new JsArray(a.value.map(write).toVector)
         case m: WomMap => new JsObject(m.value map {case(k,v) => k.valueString -> write(v)})

@@ -73,7 +73,7 @@ class TesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   // Utility for converting a WomValue so that the path is localized to the
   // container's filesystem.
   override def mapCommandLineWomFile(womFile: WomFile): WomFile = {
-    womFile mapFile { path =>
+    womFile assignContainerPath { path =>
       val localPath = DefaultPathBuilder.get(path).toAbsolutePath
       localPath match {
         case p if p.startsWith(tesJobPaths.workflowPaths.DockerRoot) => p.pathAsString
@@ -204,10 +204,10 @@ class TesAsyncBackendJobExecutionActor(override val standardParams: StandardAsyn
   }
 
   override def mapOutputWomFile(womFile: WomFile): WomFile = {
-    womFile mapFile { path =>
+    womFile assignContainerPath { path =>
       val absPath: Path = tesJobPaths.callExecutionRoot.resolve(path)
       absPath match {
-        case _ if !absPath.exists && outputWomFiles.map(_.value).contains(path) =>
+        case _ if !absPath.exists && outputWomFiles.map(_.hostPath).contains(path) =>
           throw new RuntimeException("Could not process output, file not found: " +
             s"${absPath.pathAsString}")
         case _ => absPath.pathAsString

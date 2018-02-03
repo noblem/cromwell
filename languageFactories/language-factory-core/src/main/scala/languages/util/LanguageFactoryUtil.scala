@@ -71,9 +71,9 @@ object LanguageFactoryUtil {
     def prefix(port: OutputPort) = s"Invalid value for File input '${port.fullyQualifiedName}':"
 
     val failedFiles = workflowInputs collect {
-      case (port, womSingleFile: WomSingleFile) if womSingleFile.value.startsWith("\"gs://") =>
-        s"""${prefix(port)} ${womSingleFile.value} starts with a '"'"""
-      case (port, womSingleFile: WomSingleFile) if womSingleFile.value.isEmpty =>
+      case (port, womSingleFile: WomSingleFile) if womSingleFile.hostPath.startsWith("\"gs://") =>
+        s"""${prefix(port)} ${womSingleFile.hostPath} starts with a '"'"""
+      case (port, womSingleFile: WomSingleFile) if womSingleFile.hostPath.isEmpty =>
         s"${prefix(port)} empty value"
     }
 

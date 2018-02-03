@@ -54,7 +54,7 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
   )
 
   private def writeFunctionFiles: Map[FullyQualifiedName, Seq[WomFile]] =
-    instantiatedCommand.createdFiles map { f => f.file.value.md5SumShort -> List(f.file) } toMap
+    instantiatedCommand.createdFiles map { f => f.file.hostPath.md5SumShort -> List(f.file) } toMap
 
   private val callInputFiles: Map[FullyQualifiedName, Seq[WomFile]] = jobDescriptor
     .fullyQualifiedInputs
@@ -74,8 +74,8 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
           Input(
             name = Option(fullyQualifiedName + "." + index),
             description = Option(workflowName + "." + fullyQualifiedName + "." + index),
-            url = Option(f.value),
-            path = tesPaths.containerInput(f.value),
+            url = Option(f.hostPath),
+            path = tesPaths.containerInput(f.hostPath),
             `type` = Option(inputType),
             content = None
           )
@@ -122,7 +122,7 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
   }
 
   def handleGlobFile(g: WomGlobFile, index: Int) = {
-    val globName = GlobFunctions.globName(g.value)
+    val globName = GlobFunctions.globName(g.hostPath)
     val globDirName = "globDir." + index
     val globDirectory = globName + "/"
     val globListName =  "globList." + index
@@ -149,7 +149,7 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
     .zipWithIndex
     .flatMap {
       case (f: WomSingleFile, index) =>
-        val outputFile = f.value
+        val outputFile = f.hostPath
         Seq(
           Output(
             name = Option(fullyQualifiedTaskName + ".output." + index),
@@ -162,9 +162,9 @@ final case class TesTask(jobDescriptor: BackendJobDescriptor,
       case (g: WomGlobFile, index) => handleGlobFile(g, index)
       case (d: WomUnlistedDirectory, index) =>
         val directoryPathName = "dirPath." + index
-        val directoryPath = DirectoryFunctions.ensureSlashed(d.value)
+        val directoryPath = DirectoryFunctions.ensureSlashed(d.hostPath)
         val directoryListName =  "dirList." + index
-        val directoryList = DirectoryFunctions.ensureUnslashed(d.value) + ".list"
+        val directoryList = DirectoryFunctions.ensureUnslashed(d.hostPath) + ".list"
         Seq(
           Output(
             name = Option(directoryPathName),

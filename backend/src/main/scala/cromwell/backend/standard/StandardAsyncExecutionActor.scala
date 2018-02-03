@@ -113,8 +113,11 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
 
   lazy val scriptEpilogue = configurationDescriptor.backendConfig.as[Option[String]]("script-epilogue").getOrElse("sync")
 
-  lazy val temporaryDirectory = configurationDescriptor.backendConfig
-    .as[Option[String]]("temporary-directory").getOrElse(s"""$$(mkdir -p "${runtimeEnvironment.tempPath}" && echo "${runtimeEnvironment.tempPath}")""")
+  lazy val temporaryDirectory = {
+    lazy val containerTempDir = runtimeEnvironment.containerTempPath.get
+    configurationDescriptor.backendConfig
+      .as[Option[String]]("temporary-directory").getOrElse(s"""$$(mkdir -p "$containerTempDir" && echo "$containerTempDir")""")
+  }
 
   /**
     * Maps WomFile objects for use in the commandLinePreProcessor.
@@ -140,7 +143,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     *
     */
   def mapCommandLineWomFile(womFile: WomFile): WomFile =
-    womFile.mapFile(workflowPaths.buildPath(_).pathAsString)
+    womFile.assignContainerPath(workflowPaths.buildPath(_).pathAsString)
 
   /** @see [[Command.instantiate]] */
   final lazy val commandLineValueMapper: WomValue => WomValue = {
@@ -168,7 +171,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     * @return The shell scripting.
     */
   def directoryScript(unlistedDirectory: WomUnlistedDirectory): String = {
-    val directoryPath = DirectoryFunctions.ensureUnslashed(unlistedDirectory.value)
+    val directoryPath = DirectoryFunctions.ensureUnslashed(unlistedDirectory.hostPath)
     val directoryList = directoryPath + ".list"
 
     s"""|# list all the files that match the directory into a file called directory.list
@@ -203,7 +206,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
     */
   def globScript(globFile: WomGlobFile): String = {
     val parentDirectory = globParentDirectory(globFile)
-    val globDir = GlobFunctions.globName(globFile.value)
+    val globDir = GlobFunctions.globName(globFile.containerPath)
     val globDirectory = parentDirectory./(globDir)
     val globList = parentDirectory./(s"$globDir.list")
     val controlFileName = "cromwell_glob_control_file"
@@ -220,7 +223,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
         |echo "${controlFileContent.trim}" > $globDirectory/$controlFileName
         |
         |# symlink all the files into the glob directory
-        |( ln -L ${globFile.value} $globDirectory 2> /dev/null ) || ( ln ${globFile.value} $globDirectory )
+        |( ln -L ${globFile.containerPath} $globDirectory 2> /dev/null ) || ( ln ${globFile.containerPath} $globDirectory )
         |
         |# list all the files (except the control file) that match the glob into a file called glob-[md5 of glob].list
         |ls -1 $globDirectory | grep -v $controlFileName > $globList
@@ -263,7 +266,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
         |chmod 777 "$$tmpDir"
         |export _JAVA_OPTIONS=-Djava.io.tmpdir="$$tmpDir"
         |export TMPDIR="$$tmpDir"
-        |export HOME="${runtimeEnvironment.outputPath}"
+        |export HOME="${runtimeEnvironment.containerOutputPath.get}"
         |(
         |cd $cwd
         |SCRIPT_PREAMBLE
@@ -289,8 +292,11 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
   }
 
   def runtimeEnvironmentPathMapper(env: RuntimeEnvironment): RuntimeEnvironment = {
-    def localize(path: String): String = (WomSingleFile(path) |> commandLineValueMapper).valueString
-    env.copy(outputPath = env.outputPath |> localize, tempPath = env.tempPath |> localize)
+    def containerize(path: String): String = (WomSingleFile(path) |> commandLineValueMapper).valueString
+    env.copy(
+      containerOutputPath = Option(env.hostOutputPath |> containerize),
+      containerTempPath = Option(env.hostTempPath |> containerize)
+    )
   }
 
   lazy val runtimeEnvironment =
@@ -307,7 +313,7 @@ trait StandardAsyncExecutionActor extends AsyncBackendJobExecutionActor with Sta
       runtimeEnvironment
     )
 
-    def adHocFileLocalization(womFile: WomFile): String = womFile.value.substring(womFile.value.lastIndexOf("/") + 1)
+    def adHocFileLocalization(womFile: WomFile): String = womFile.hostPath.substring(womFile.hostPath.lastIndexOf("/") + 1)
 
     def validateAdHocFile(value: WomValue): ErrorOr[List[WomFile]] = value match {
       case f: WomFile => List(f).valid

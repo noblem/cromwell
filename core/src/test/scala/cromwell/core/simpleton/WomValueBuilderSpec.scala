@@ -153,19 +153,27 @@ class WomValueBuilderSpec extends FlatSpec with Matchers with Mockito {
     SimpletonConversion(
       "directory",
       WomMaybeListedDirectory(
-        Option("outerValueName"), 
-        Option(List(
+        hostPathOption = Option("outerValueName"),
+        containerPathOption = None,
+        listingOption = Option(List(
           WomSingleFile("outerSingleFile"),
-          WomMaybeListedDirectory(Option("innerValueName"), Option(List(WomSingleFile("innerSingleFile")))),
+          WomMaybeListedDirectory(
+            hostPathOption = Option("innerValueName"),
+            containerPathOption = None,
+            listingOption = Option(List(WomSingleFile("innerSingleFile")))),
           WomMaybePopulatedFile(
-            Option("populatedInnerValueName"),
+            hostPathOption = Option("populatedInnerValueName"),
+            containerPathOption = None,
             Option("innerChecksum"),
             Option(10L),
             Option("innerFormat"),
             Option("innerContents"),
             List(
               WomSingleFile("populatedInnerSingleFile"),
-              WomMaybeListedDirectory(Option("innerDirectoryValueName"), Option(List(WomSingleFile("innerDirectorySingleFile")))),
+              WomMaybeListedDirectory(
+                hostPathOption = Option("innerDirectoryValueName"),
+                containerPathOption = None,
+                listingOption = Option(List(WomSingleFile("innerDirectorySingleFile")))),
               WomUnlistedDirectory("innerUnlistedDirectory"),
               WomGlobFile("innerGlobFile")
             )

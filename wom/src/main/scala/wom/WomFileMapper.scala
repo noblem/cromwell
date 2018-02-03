@@ -14,7 +14,7 @@ object WomFileMapper {
     * the passed in WomFile plus any additional files referenced within the WomFile.
     *
     * @see [[wom.values.WomValue.collectAsSeq]]
-    * @see [[wom.values.WomFile.mapFile]]
+    * @see [[wom.values.WomFile.assignContainerPath]]
     */
   def mapWomFiles(mapper: (WomFile => WomFile))(womValue: WomValue): Try[WomValue] = {
     womValue match {

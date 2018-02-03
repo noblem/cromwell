@@ -119,8 +119,8 @@ object ExpressionEvaluator {
 
   def cwlMap(runtime: RuntimeEnvironment): Map[String, WomValue] = {
     Map(
-      "outdir" -> WomString(runtime.outputPath),
-      "tmpdir" -> WomString(runtime.tempPath),
+      "outdir" -> WomString(runtime.hostOutputPath),
+      "tmpdir" -> WomString(runtime.hostTempPath),
       "cores" -> WomInteger(runtime.cores),
       "ram" -> WomFloat(runtime.ram),
       "outdirSize" -> WomFloat(runtime.outputPathSize.toDouble),

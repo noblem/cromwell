@@ -57,7 +57,14 @@ case class File private
         case (None, None) =>
           "Cannot convert CWL File to WomValue without either a location, a path, a basename, or contents".invalidNel
         case (_, _) =>
-          WomMaybePopulatedFile(valueOption, checksum, size, format, contents, secondaryFiles).valid
+          WomMaybePopulatedFile(
+            hostPathOption = valueOption,
+            containerPathOption = None,
+            checksumOption = checksum,
+            sizeOption = size,
+            formatOption = format,
+            contentsOption = contents,
+            secondaryFiles = secondaryFiles).valid
       }
     }
   }
@@ -111,7 +118,7 @@ object File {
   def secondaryStringFile(primaryWomFile: WomFile,
                           stringWomFileType: WomFileType,
                           secondaryValue: String): ErrorOr[WomFile] = {
-    validate(WomFile(stringWomFileType, File.relativeFileName(primaryWomFile.value, secondaryValue)))
+    validate(WomFile(stringWomFileType, File.relativeFileName(primaryWomFile.hostPath, secondaryValue)))
   }
 
   def secondaryExpressionFiles(primaryWomFile: WomFile,
@@ -206,7 +213,7 @@ case class Directory private
       (valueOption, listingOption) match {
         case (None, None) =>
           "Cannot convert CWL File to WomValue without either a location, a path, a basename, or a listing".invalidNel
-        case (_, _) => WomMaybeListedDirectory(valueOption, listingOption).valid
+        case (_, _) => WomMaybeListedDirectory(hostPathOption = valueOption, containerPathOption = None, listingOption).valid
       }
     }
   }

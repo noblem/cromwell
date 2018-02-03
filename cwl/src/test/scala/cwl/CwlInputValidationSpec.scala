@@ -134,7 +134,7 @@ class CwlInputValidationSpec extends FlatSpec with Matchers with TableDrivenProp
     validInputs(w0OutputPort.name).select[WomExpression].get.sourceString shouldBe "hi w0 !"
     validInputs(w1OutputPort.name) shouldBe
       Coproduct[ResolvedExecutableInput](WomMaybePopulatedFile(
-        valueOption = Option("my_file.txt"),
+        hostPathOption = Option("my_file.txt"),
         secondaryFiles = List(WomMaybePopulatedFile("secondaryFile.txt"))
       ): WomValue)
     validInputs(w2OutputPort.name) shouldBe Coproduct[ResolvedExecutableInput](WomString("hello !"): WomValue)
@@ -162,7 +162,7 @@ class CwlInputValidationSpec extends FlatSpec with Matchers with TableDrivenProp
 //    )
     validInputs(w10OutputPort.name) shouldBe
       Coproduct[ResolvedExecutableInput](WomMaybeListedDirectory(
-        valueOption = Option("directory_location"),
+        hostPathOption = Option("directory_location"),
         listingOption = Option(
           List(
             WomMaybeListedDirectory("innerDirectory"),

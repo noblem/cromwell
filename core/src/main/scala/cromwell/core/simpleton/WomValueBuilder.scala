@@ -167,7 +167,7 @@ object WomValueBuilder {
         val listing = directoryValues.get("listing")
           .map({ _.asArray.map(toWomFile).collect({ case womFile: WomFile => womFile }) })
 
-        WomMaybeListedDirectory(value, listing)
+        WomMaybeListedDirectory(hostPathOption = value, containerPathOption = None, listing)
       case WomMaybePopulatedFileType =>
         val populatedValues = components.asMap
 
@@ -181,7 +181,7 @@ object WomValueBuilder {
         })
 
         WomMaybePopulatedFile(
-          valueOption = value,
+          hostPathOption = value,
           checksumOption = checksum,
           sizeOption = size,
           formatOption = format,

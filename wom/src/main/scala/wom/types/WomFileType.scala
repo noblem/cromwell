@@ -90,7 +90,7 @@ case object WomMaybeListedDirectoryType extends WomFileType {
     case s: String => WomMaybeListedDirectory(s)
     case s: JsString => WomMaybeListedDirectory(s.value)
     case s: WomString => WomMaybeListedDirectory(s.valueString)
-    case d: WomUnlistedDirectory => WomMaybeListedDirectory(d.value)
+    case d: WomUnlistedDirectory => WomMaybeListedDirectory(d.hostPath)
     case d: WomMaybeListedDirectory => d
   }
 }
@@ -100,7 +100,7 @@ case object WomMaybePopulatedFileType extends WomFileType {
     case s: String => WomMaybePopulatedFile(s)
     case s: JsString => WomMaybePopulatedFile(s.value)
     case s: WomString => WomMaybePopulatedFile(s.valueString)
-    case f: WomSingleFile => WomMaybePopulatedFile(f.value)
+    case f: WomSingleFile => WomMaybePopulatedFile(f.hostPath)
     case f: WomMaybePopulatedFile => f
   }
 }

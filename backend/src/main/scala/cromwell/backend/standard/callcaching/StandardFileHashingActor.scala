@@ -72,7 +72,7 @@ abstract class StandardFileHashingActor(standardParams: StandardFileHashingActor
     case fileRequest: SingleFileHashRequest =>
       customHashStrategy(fileRequest) match {
         case Some(Success(result)) => context.parent ! FileHashResponse(HashResult(fileRequest.hashKey, HashValue(result)))
-        case Some(Failure(failure)) => context.parent ! HashingFailedMessage(fileRequest.file.value, failure)
+        case Some(Failure(failure)) => context.parent ! HashingFailedMessage(fileRequest.file.hostPath, failure)
         case None => asyncHashing(fileRequest, context.parent)
       }
 
@@ -89,14 +89,14 @@ abstract class StandardFileHashingActor(standardParams: StandardFileHashingActor
   }
 
   def asyncHashing(fileRequest: SingleFileHashRequest, replyTo: ActorRef) = {
-    val fileAsString = fileRequest.file.value
+    val fileAsString = fileRequest.file.hostPath
     val ioHashCommandTry = Try {
       val gcsPath = getPath(fileAsString).get
       ioCommandBuilder.hashCommand(gcsPath)
     }
 
     ioHashCommandTry match {
-      case Success(ioHashCommand) => sendIoCommandWithContext(ioHashCommand, FileHashContext(fileRequest.hashKey, fileRequest.file.value))
+      case Success(ioHashCommand) => sendIoCommandWithContext(ioHashCommand, FileHashContext(fileRequest.hashKey, fileRequest.file.hostPath))
       case Failure(failure) => replyTo ! HashingFailedMessage(fileAsString, failure)
     }
   }

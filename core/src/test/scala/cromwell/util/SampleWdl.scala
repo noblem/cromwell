@@ -56,7 +56,7 @@ trait SampleWdl extends TestFileUtil {
       case s: WomString => JsString(s.value)
       case i: WomInteger => JsNumber(i.value)
       case f: WomFloat => JsNumber(f.value)
-      case f: WomSingleFile => JsString(f.value)
+      case f: WomSingleFile => JsString(f.hostPath)
       case p: Path => JsString(p.pathAsString)
     }
     def read(value: JsValue) = throw new NotImplementedError(s"Reading JSON not implemented: $value")

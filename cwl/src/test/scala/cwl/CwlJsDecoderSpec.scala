@@ -30,7 +30,7 @@ class CwlJsDecoderSpec extends FlatSpec with Matchers with TableDrivenPropertyCh
         "contents" -> "file_contents"
       ).asJava),
       WomMaybePopulatedFile(
-        valueOption = Option("path/to/file.txt"),
+        hostPathOption = Option("path/to/file.txt"),
         checksumOption = Option("hash_here"),
         sizeOption = Option(123L),
         formatOption = Option("file_format"),
@@ -52,7 +52,7 @@ class CwlJsDecoderSpec extends FlatSpec with Matchers with TableDrivenPropertyCh
          |""".stripMargin,
       Map(),
       WomMaybePopulatedFile(
-        valueOption = Option("other/dir/img.jpg"),
+        hostPathOption = Option("other/dir/img.jpg"),
         checksumOption = Option("check_sum"),
         sizeOption = Option(567L),
         formatOption = Option("more_jpeg"),

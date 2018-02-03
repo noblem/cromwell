@@ -103,7 +103,7 @@ trait Tool {
    */
   private def inputValueMapper(inputParameter: InputParameter): InputValueMapper = { ioFunctionSet: IoFunctionSet => {
       case womValue: WomMaybePopulatedFile if inputParameter.loadContents =>
-        val content = Await.result(ioFunctionSet.readFile(womValue.value, ReadLimit, failOnOverflow = false), 60.seconds)
+        val content = Await.result(ioFunctionSet.readFile(womValue.hostPath, ReadLimit, failOnOverflow = false), 60.seconds)
         womValue.copy(contentsOption = Option(content))
       case womValue: WomValue => womValue
     }

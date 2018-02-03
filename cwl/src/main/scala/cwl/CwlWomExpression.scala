@@ -74,10 +74,10 @@ final case class InitialWorkDirFileGeneratorExpression(entry: IwdrListingArrayEn
           case f: WomFile =>
             val errorOrEntryName: ErrorOr[String] = direntEntryName match {
               case Some(en) => evaluateEntryName(en)
-              case None => f.value.split('/').last.validNel
+              case None => f.hostPath.split('/').last.validNel
             }
             errorOrEntryName flatMap { entryName =>
-              validate(Await.result(ioFunctionSet.copyFile(f.value, entryName), Duration.Inf))
+              validate(Await.result(ioFunctionSet.copyFile(f.hostPath, entryName), Duration.Inf))
             }
           case other => for {
             coerced <- WomStringType.coerceRawValue(other).toErrorOr

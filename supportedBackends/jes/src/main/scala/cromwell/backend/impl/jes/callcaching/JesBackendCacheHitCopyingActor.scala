@@ -25,7 +25,7 @@ class JesBackendCacheHitCopyingActor(standardParams: StandardCacheHitCopyingActo
     case CopyCachedOutputs => super.processSimpletons(womValueSimpletons, sourceCallRootPath)
     case UseOriginalCachedOutputs =>
       val touchCommands: Seq[Try[IoTouchCommand]] = womValueSimpletons collect {
-        case WomValueSimpleton(_, wdlFile: WomFile) => getPath(wdlFile.value) map GcsBatchCommandBuilder.touchCommand
+        case WomValueSimpleton(_, wdlFile: WomFile) => getPath(wdlFile.hostPath) map GcsBatchCommandBuilder.touchCommand
       }
       
       TryUtil.sequence(touchCommands) map {

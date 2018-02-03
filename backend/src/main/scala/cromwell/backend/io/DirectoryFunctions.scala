@@ -70,16 +70,16 @@ object DirectoryFunctions {
         case womSingleFile: WomSingleFile => List(womSingleFile).valid
 
         case womUnlistedDirectory: WomUnlistedDirectory =>
-          val errorOrListPaths = listFiles(pathFactory.buildPath(ensureSlashed(womUnlistedDirectory.value)))
+          val errorOrListPaths = listFiles(pathFactory.buildPath(ensureSlashed(womUnlistedDirectory.hostPath)))
           errorOrListPaths.map(_.map(path => WomSingleFile(path.pathAsString)))
 
         case womMaybePopulatedFile: WomMaybePopulatedFile =>
           val allFiles: List[WomFile] =
-            womMaybePopulatedFile.valueOption.toList.map(WomSingleFile) ++ womMaybePopulatedFile.secondaryFiles
+            womMaybePopulatedFile.hostPathOption.toList.map(WomSingleFile(_)) ++ womMaybePopulatedFile.secondaryFiles
           allFiles.traverse(listWomSingleFiles).map(_.flatten)
 
         case w: WomMaybeListedDirectory =>
-          (w.valueOption, w.listingOption) match {
+          (w.hostPathOption, w.listingOption) match {
             case (None, None) => Nil.valid
             case (Some(value), None) => listWomSingleFiles(WomUnlistedDirectory(value))
             case (None, Some(listing)) => listing.toList.traverse(listWomSingleFiles).map(_.flatten)

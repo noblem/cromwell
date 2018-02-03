@@ -253,7 +253,7 @@ abstract class StandardCacheHitCopyingActor(val standardParams: StandardCacheHit
   protected def processSimpletons(womValueSimpletons: Seq[WomValueSimpleton], sourceCallRootPath: Path): Try[(CallOutputs, Set[IoCommand[_]])] = Try {
     val (destinationSimpletons, ioCommands): (List[WomValueSimpleton], Set[IoCommand[_]]) = womValueSimpletons.toList.foldMap({
       case WomValueSimpleton(key, wdlFile: WomSingleFile) =>
-        val sourcePath = getPath(wdlFile.value).get
+        val sourcePath = getPath(wdlFile.hostPath).get
         val destinationPath = PathCopier.getDestinationFilePath(sourceCallRootPath, sourcePath, destinationCallRootPath)
 
         val destinationSimpleton = WomValueSimpleton(key, WomSingleFile(destinationPath.pathAsString))

@@ -230,7 +230,7 @@ object CommandOutputBinding {
                                        commandOutputBinding: CommandOutputBinding): ErrorOr[WomMaybeListedDirectory] = {
     val listing = Await.result(ioFunctionSet.listAllFilesUnderDirectory(path), Duration.Inf)
     listing.toList traverse loadFileWithContents(ioFunctionSet, commandOutputBinding) map { listing =>
-      WomMaybeListedDirectory(valueOption = Option(path), listingOption = Option(listing))
+      WomMaybeListedDirectory(hostPathOption = Option(path), listingOption = Option(listing))
     }
   }
 
@@ -247,7 +247,7 @@ object CommandOutputBinding {
       }
     }
     contentsOptionErrorOr map { contentsOption =>
-      WomMaybePopulatedFile(valueOption = Option(path), contentsOption = contentsOption)
+      WomMaybePopulatedFile(hostPathOption = Option(path), contentsOption = contentsOption)
     }
   }
 

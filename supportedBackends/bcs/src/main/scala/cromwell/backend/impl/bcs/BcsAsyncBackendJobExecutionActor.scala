@@ -84,7 +84,7 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
   }
 
   private[bcs] def getInputFiles(jobDescriptor: BackendJobDescriptor): Map[FullyQualifiedName, Seq[WomFile]] = {
-    val writeFunctionFiles = instantiatedCommand.createdFiles map { f => f.file.value.md5SumShort -> Seq(f.file) }
+    val writeFunctionFiles = instantiatedCommand.createdFiles map { f => f.file.hostPath.md5SumShort -> Seq(f.file) }
 
     val writeFunctionInputs = writeFunctionFiles map  {
       case (name, files) => name -> files
@@ -129,7 +129,7 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
 
   private[bcs] def isOutputOssFileString(s: String): Boolean = {
     callRawOutputFiles.exists({
-      case file: WomSingleFile if file.value == s => true
+      case file: WomSingleFile if file.hostPath == s => true
       case _ => false
     })
   }
@@ -148,7 +148,7 @@ final class BcsAsyncBackendJobExecutionActor(override val standardParams: Standa
     val destination = getPath(wdlFile.valueString) match {
       case Success(ossPath: OssPath) => ossPath
       case Success(path: Path) if !path.isAbsolute => relativeOutputPath(path)
-      case _ => callRootPath.resolve(wdlFile.value.stripPrefix("/"))
+      case _ => callRootPath.resolve(wdlFile.hostPath.stripPrefix("/"))
     }
 
     val src = relativePath(wdlFile.valueString)

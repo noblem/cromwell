@@ -12,7 +12,7 @@ case object WomStringType extends WomPrimitiveType {
     case s: String => WomString(s)
     case s: JsString => WomString(s.value)
     case s: WomString => s
-    case f: WomPrimitiveFile => WomString(f.value)
+    case f: WomPrimitiveFile => WomString(f.hostPath)
     case p: WomPrimitive => WomString(p.toWomString)
   }
 

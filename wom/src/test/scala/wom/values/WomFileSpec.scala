@@ -19,43 +19,45 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
   lazy val secondaryFile1 = WomSingleFile("secondary/file1")
   lazy val secondaryFile2 = WomSingleFile("secondary/file2")
   lazy val dirWithListedDirs = WomMaybeListedDirectory(
-    valueOption = Option(singleDir.value),
+    hostPathOption = Option(singleDir.hostPath),
     listingOption = Option(List(listedDir1, listedDir2))
   )
   lazy val dirWithListedFiles = WomMaybeListedDirectory(
-    valueOption = Option(singleDir.value),
+    hostPathOption = Option(singleDir.hostPath),
     listingOption = Option(List(secondaryFile1, secondaryFile2))
   )
   lazy val fileWithSecondaryFiles = WomMaybePopulatedFile(
-    valueOption = Option(singleFile.value),
+    hostPathOption = Option(singleFile.hostPath),
     secondaryFiles = List(secondaryFile1, secondaryFile2)
   )
   lazy val fileWithSecondaryDirs = WomMaybePopulatedFile(
-    valueOption = Option(singleFile.value),
+    hostPathOption = Option(singleFile.hostPath),
     secondaryFiles = List(listedDir1, listedDir2)
   )
   lazy val nestedFilesAndDirs = WomMaybePopulatedFile(
-    valueOption = Option(singleFile.value),
+    hostPathOption = Option(singleFile.hostPath),
     secondaryFiles = List(WomMaybeListedDirectory(
-      valueOption = Option(listedDir1.value),
+      hostPathOption = Option(listedDir1.hostPath),
       listingOption = Option(List(WomMaybePopulatedFile(
-        valueOption = Option(secondaryFile1.value),
+        hostPathOption = Option(secondaryFile1.hostPath),
         secondaryFiles = List(WomMaybeListedDirectory(
-          valueOption = Option(listedDir2.value),
+          hostPathOption = Option(listedDir2.hostPath),
           listingOption = Option(List(secondaryFile2))
         ))
       )))
     ))
   )
 
-  val mapFileTests = Table(
+  val assignContainerPathTests = Table(
     ("description", "womFile", "expected"),
     ("a single directory", singleDir, WomUnlistedDirectory("prepend/single/dir")),
     ("a single file", singleFile, WomSingleFile("prepend/single/file")),
-    ("a glob file", globFile, WomGlobFile("prepend/glob/*")),
+    // glob files always have container paths
+    // ("a glob file", globFile, WomGlobFile("prepend/glob/*")),
     ("a dir with listed dirs", dirWithListedDirs,
       WomMaybeListedDirectory(
-        valueOption = Option("prepend/single/dir"),
+        hostPathOption = Option("single/dir"),
+        containerPathOption = Option("prepend/single/dir"),
         listingOption = Option(List(
           WomUnlistedDirectory("prepend/listed/dir1"),
           WomUnlistedDirectory("prepend/listed/dir2")
@@ -64,31 +66,38 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
     ),
     ("a dir with listed files", dirWithListedFiles,
       WomMaybeListedDirectory(
-        valueOption = Option("prepend/single/dir"),
+        hostPathOption = Option("single/dir"),
+        containerPathOption = Option("prepend/single/dir"),
         listingOption = Option(List(WomSingleFile("prepend/secondary/file1"), WomSingleFile("prepend/secondary/file2")))
       )
     ),
     ("a file with secondary files", fileWithSecondaryFiles,
       WomMaybePopulatedFile(
-        valueOption = Option("prepend/single/file"),
+        hostPathOption = Option("single/file"),
+        containerPathOption = Option("prepend/single/file"),
         secondaryFiles = List(WomSingleFile("prepend/secondary/file1"), WomSingleFile("prepend/secondary/file2"))
       )
     ),
     ("a file with secondary dirs", fileWithSecondaryDirs,
       WomMaybePopulatedFile(
-        valueOption = Option("prepend/single/file"),
+        hostPathOption = Option("single/file"),
+        containerPathOption = Option("prepend/single/file"),
         secondaryFiles = List(WomUnlistedDirectory("prepend/listed/dir1"), WomUnlistedDirectory("prepend/listed/dir2"))
       )
     ),
     ("a nested file/dir", nestedFilesAndDirs,
       WomMaybePopulatedFile(
-        valueOption = Option("prepend/single/file"),
+        hostPathOption = Option("single/file"),
+        containerPathOption = Option("prepend/single/file"),
         secondaryFiles = List(WomMaybeListedDirectory(
-          valueOption = Option("prepend/listed/dir1"),
+          hostPathOption = Option("listed/dir1"),
+          containerPathOption = Option("prepend/listed/dir1"),
           listingOption = Option(List(WomMaybePopulatedFile(
-            valueOption = Option("prepend/secondary/file1"),
+            hostPathOption = Option("secondary/file1"),
+            containerPathOption = Option("prepend/secondary/file1"),
             secondaryFiles = List(WomMaybeListedDirectory(
-              valueOption = Option("prepend/listed/dir2"),
+              hostPathOption = Option("listed/dir2"),
+              containerPathOption = Option("prepend/listed/dir2"),
               listingOption = Option(List(WomSingleFile("prepend/secondary/file2")))
             ))
           )))
@@ -97,9 +106,9 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
     )
   )
 
-  forAll(mapFileTests) { (description, womFile, expected) =>
+  forAll(assignContainerPathTests) { (description, womFile, expected) =>
     it should s"map $description" in {
-      womFile.mapFile("prepend/" + _) should be(expected)
+      womFile.assignContainerPath("prepend/" + _) should be(expected)
     }
   }
 
@@ -166,7 +175,7 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
     ("description", "womFile", "expectedPrefix", "expectedSuffix"),
     ("a single directory", singleDir, WomString("prefix/single/dir"), WomUnlistedDirectory("single/dir/suffix")),
     ("a single file", singleFile, WomString("prefix/single/file"), WomSingleFile("single/file/suffix")),
-    ("a glob file", globFile, WomString("prefix/glob/*"), WomGlobFile("glob/*/suffix"))
+    //("a glob file", globFile, WomString("prefix/glob/*"), WomGlobFile("glob/*/suffix"))
   )
 
   forAll(addTests) { (description, womFile, expectedPrefix, expectedSuffix) =>
@@ -252,9 +261,9 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
 
   val womFileEqualsTests = Table(
     ("description", "womFileA", "womFileB", "expected"),
-    ("a single directory matched to a similar directory", singleDir, WomUnlistedDirectory(singleDir.value), true),
-    ("a single file matched to a similar file", singleFile, WomSingleFile(singleFile.value), true),
-    ("a glob file matched to a similar glob", globFile, WomGlobFile(globFile.value), true),
+    ("a single directory matched to a similar directory", singleDir, WomUnlistedDirectory(singleDir.hostPath), true),
+    ("a single file matched to a similar file", singleFile, WomSingleFile(singleFile.hostPath), true),
+    ("a glob file matched to a similar glob", globFile, WomGlobFile(globFile.containerPath), true),
     ("a single directory matched to a dissimilar directory", singleDir, WomUnlistedDirectory("should/not/match"),
       false),
     ("a single file matched to a dissimilar file", singleFile, WomSingleFile("should/not/match"), false),
@@ -285,18 +294,18 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
 
   val womFileEqualsFailures = Table(
     ("description", "womFileA", "womFileB"),
-    ("a single file matched to a similar directory", singleFile, WomUnlistedDirectory(singleDir.value)),
-    ("a glob file matched to a similar directory", globFile, WomUnlistedDirectory(singleDir.value)),
-    ("a single directory matched to a similar file", singleDir, WomSingleFile(singleFile.value)),
-    ("a glob file matched to a similar file", globFile, WomSingleFile(singleFile.value)),
-    ("a single directory matched to a similar glob", singleDir, WomGlobFile(globFile.value)),
-    ("a single file matched to a similar glob", singleFile, WomGlobFile(globFile.value)),
-    ("a dir with listed dirs matched to a similar directory", dirWithListedDirs, WomUnlistedDirectory(singleDir.value)),
+    ("a single file matched to a similar directory", singleFile, WomUnlistedDirectory(singleDir.hostPath)),
+    ("a glob file matched to a similar directory", globFile, WomUnlistedDirectory(singleDir.hostPath)),
+    ("a single directory matched to a similar file", singleDir, WomSingleFile(singleFile.hostPath)),
+    ("a glob file matched to a similar file", globFile, WomSingleFile(singleFile.hostPath)),
+    ("a single directory matched to a similar glob", singleDir, WomGlobFile(globFile.hostPath)),
+    ("a single file matched to a similar glob", singleFile, WomGlobFile(globFile.hostPath)),
+    ("a dir with listed dirs matched to a similar directory", dirWithListedDirs, WomUnlistedDirectory(singleDir.hostPath)),
     ("a dir with listed files matched to a similar directory", dirWithListedFiles,
-      WomUnlistedDirectory(singleDir.value)),
-    ("a file with secondary files matched to a similar file", fileWithSecondaryFiles, WomSingleFile(singleFile.value)),
-    ("a file with secondary dirs matched to a similar file", fileWithSecondaryDirs, WomSingleFile(singleFile.value)),
-    ("a nested file/dir matched to a similar file", nestedFilesAndDirs, WomSingleFile(singleFile.value))
+      WomUnlistedDirectory(singleDir.hostPath)),
+    ("a file with secondary files matched to a similar file", fileWithSecondaryFiles, WomSingleFile(singleFile.hostPath)),
+    ("a file with secondary dirs matched to a similar file", fileWithSecondaryDirs, WomSingleFile(singleFile.hostPath)),
+    ("a nested file/dir matched to a similar file", nestedFilesAndDirs, WomSingleFile(singleFile.hostPath))
   )
 
   forAll(womFileEqualsFailures) { (description, womFileA, womFileB) =>
@@ -331,15 +340,15 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
 
   val womStringEqualsTests = Table(
     ("description", "womFile", "string", "expected"),
-    ("a single directory matched to a similar directory", singleDir, singleDir.value, true),
-    ("a single file matched to a similar directory", singleFile, singleDir.value, false),
-    ("a glob file matched to a similar directory", globFile, singleDir.value, false),
-    ("a single directory matched to a similar file", singleDir, singleFile.value, false),
-    ("a single file matched to a similar file", singleFile, singleFile.value, true),
-    ("a glob file matched to a similar file", globFile, singleFile.value, false),
-    ("a single directory matched to a similar glob", singleDir, globFile.value, false),
-    ("a single file matched to a similar glob", singleFile, globFile.value, false),
-    ("a glob file matched to a similar glob", globFile, globFile.value, true)
+    ("a single directory matched to a similar directory", singleDir, singleDir.hostPath, true),
+    ("a single file matched to a similar directory", singleFile, singleDir.hostPath, false),
+    ("a glob file matched to a similar directory", globFile, singleDir.hostPath, false),
+    ("a single directory matched to a similar file", singleDir, singleFile.hostPath, false),
+    ("a single file matched to a similar file", singleFile, singleFile.hostPath, true),
+    ("a glob file matched to a similar file", globFile, singleFile.hostPath, false),
+    ("a single directory matched to a similar glob", singleDir, globFile.containerPath, false),
+    ("a single file matched to a similar glob", singleFile, globFile.containerPath, false),
+    ("a glob file matched to a similar glob", globFile, globFile.containerPath, true)
   )
 
   forAll(womStringEqualsTests) { (description, womFile, string, expected) =>
@@ -366,11 +375,11 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
 
   val womStringEqualsFailures = Table(
     ("description", "womFile", "string", "expected"),
-    ("a dir with listed dirs matched to a similar directory", dirWithListedDirs, singleDir.value, true),
-    ("a dir with listed files matched to a similar directory", dirWithListedFiles, singleDir.value, true),
-    ("a file with secondary files matched to a similar file", fileWithSecondaryFiles, singleFile.value, true),
-    ("a file with secondary dirs matched to a similar file", fileWithSecondaryDirs, singleFile.value, true),
-    ("a nested file/dir matched to a similar file", nestedFilesAndDirs, singleFile.value, true),
+    ("a dir with listed dirs matched to a similar directory", dirWithListedDirs, singleDir.hostPath, true),
+    ("a dir with listed files matched to a similar directory", dirWithListedFiles, singleDir.hostPath, true),
+    ("a file with secondary files matched to a similar file", fileWithSecondaryFiles, singleFile.hostPath, true),
+    ("a file with secondary dirs matched to a similar file", fileWithSecondaryDirs, singleFile.hostPath, true),
+    ("a nested file/dir matched to a similar file", nestedFilesAndDirs, singleFile.hostPath, true),
     ("a dir with listed dirs matched to a similar directory", dirWithListedDirs, "should/not/match", false),
     ("a dir with listed files matched to a similar directory", dirWithListedFiles, "should/not/match", false),
     ("a file with secondary files matched to a similar file", fileWithSecondaryFiles, "should/not/match", false),

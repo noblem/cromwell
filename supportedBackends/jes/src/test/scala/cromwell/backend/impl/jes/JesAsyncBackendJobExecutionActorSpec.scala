@@ -416,12 +416,12 @@ class JesAsyncBackendJobExecutionActorSpec extends TestKitSuite("JesAsyncBackend
         }
 
         mappedInputs(localFileKey) match {
-          case wdlFile: WomSingleFile => assert(wdlFile.value.equalsIgnoreCase(localFileVal.value))
+          case wdlFile: WomSingleFile => assert(wdlFile.hostPath.equalsIgnoreCase(localFileVal.hostPath))
           case _ => fail("test setup error")
         }
 
         mappedInputs(gcsFileKey) match {
-          case wdlFile: WomSingleFile => assert(wdlFile.value.equalsIgnoreCase("/cromwell_root/blah/abc"))
+          case wdlFile: WomSingleFile => assert(wdlFile.hostPath.equalsIgnoreCase("/cromwell_root/blah/abc"))
           case _ => fail("test setup error")
         }
       case Left(badtimes) => fail(badtimes.toList.mkString(", "))

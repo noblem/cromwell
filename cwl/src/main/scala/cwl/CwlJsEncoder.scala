@@ -33,9 +33,9 @@ class CwlJsEncoder extends JsEncoder {
     */
   def encodeFileOrDirectory(value: WomFile): ErrorOr[java.util.Map[String, AnyRef]] = {
     value match {
-      case directory: WomUnlistedDirectory => encodeDirectory(WomMaybeListedDirectory(directory.value))
-      case file: WomSingleFile => encodeFile(WomMaybePopulatedFile(file.value))
-      case glob: WomGlobFile => encodeFile(WomMaybePopulatedFile(glob.value))
+      case directory: WomUnlistedDirectory => encodeDirectory(WomMaybeListedDirectory(directory.hostPath))
+      case file: WomSingleFile => encodeFile(WomMaybePopulatedFile(file.hostPath))
+      case glob: WomGlobFile => encodeFile(WomMaybePopulatedFile(glob.hostPath))
       case directory: WomMaybeListedDirectory => encodeDirectory(directory)
       case file: WomMaybePopulatedFile => encodeFile(file)
     }
@@ -47,12 +47,12 @@ class CwlJsEncoder extends JsEncoder {
   def encodeFile(file: WomMaybePopulatedFile): ErrorOr[java.util.Map[String, AnyRef]] = {
     val lifted: ErrorOr[Map[String, Option[AnyRef]]] = Map(
       "class" -> validate(Option("File")),
-      "location" -> validate(Option(file.value)),
-      "path" -> validate(Option(file.value)),
-      "basename" -> validate(Option(File.basename(file.value))),
-      "dirname" -> validate(Option(File.dirname(file.value))),
-      "nameroot" -> validate(Option(File.nameroot(file.value))),
-      "nameext" -> validate(Option(File.nameext(file.value))),
+      "location" -> validate(Option(file.hostPath)),
+      "path" -> validate(Option(file.hostPath)),
+      "basename" -> validate(Option(File.basename(file.hostPath))),
+      "dirname" -> validate(Option(File.dirname(file.hostPath))),
+      "nameroot" -> validate(Option(File.nameroot(file.hostPath))),
+      "nameext" -> validate(Option(File.nameext(file.hostPath))),
       "checksum" -> validate(file.checksumOption),
       "size" -> validate(file.sizeOption.map(Long.box)),
       "secondaryFiles" -> encodeFileOrDirectories(file.secondaryFiles).map(Option(_)),
@@ -69,9 +69,9 @@ class CwlJsEncoder extends JsEncoder {
   def encodeDirectory(directory: WomMaybeListedDirectory): ErrorOr[java.util.Map[String, AnyRef]] = {
     val lifted: ErrorOr[Map[String, Option[AnyRef]]] = Map(
       "class" -> validate(Option("Directory")),
-      "location" -> validate(directory.valueOption),
-      "path" -> validate(Option(directory.value)),
-      "basename" -> validate(Option(Directory.basename(directory.value))),
+      "location" -> validate(directory.hostPathOption),
+      "path" -> validate(Option(directory.hostPath)),
+      "basename" -> validate(Option(Directory.basename(directory.hostPath))),
       "listing" -> directory.listingOption.traverse(encodeFileOrDirectories)
     ).sequence
 

@@ -26,7 +26,7 @@ trait SampleWdl {
       case s: WomString => JsString(s.value)
       case i: WomInteger => JsNumber(i.value)
       case f: WomFloat => JsNumber(f.value)
-      case f: WomFile => JsString(f.value)
+      case f: WomFile => JsString(f.hostPath)
     }
     def read(value: JsValue) = throw new NotImplementedError(s"Reading JSON not implemented: $value")
   }

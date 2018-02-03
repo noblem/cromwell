@@ -63,12 +63,12 @@ class MetadataServiceSpec extends FlatSpec with Matchers with TableDrivenPropert
     val workflowId = WorkflowId.randomId()
     // Leave some fields out on purpose to verify that they still make it (empty) to the metadata
     val womMaybePopulatedFileInner = WomMaybePopulatedFile(
-      valueOption = Option("innerFileValue"),
+      hostPathOption = Option("innerFileValue"),
       contentsOption = Option("innerContents")
     )
 
     val womMaybePopulatedFileOuter = WomMaybePopulatedFile(
-      valueOption = Option("fileValue"),
+      hostPathOption = Option("fileValue"),
       checksumOption = Option("checksum"),
       sizeOption = Option(5L),
       formatOption = Option("format"),
@@ -102,12 +102,12 @@ class MetadataServiceSpec extends FlatSpec with Matchers with TableDrivenPropert
     val workflowId = WorkflowId.randomId()
     // Leave some fields out on purpose to verify that they still make it (empty) to the metadata
     val womMaybeListedDirectoryInner = WomMaybeListedDirectory(
-      valueOption = Option("innerDirectoryValue"),
+      hostPathOption = Option("innerDirectoryValue"),
       listingOption = None
     )
 
     val womMaybeListedDirectoryOuter = WomMaybeListedDirectory(
-      valueOption = Option("directoryValue"),
+      hostPathOption = Option("directoryValue"),
       listingOption = Option(
         List(
           womMaybeListedDirectoryInner,

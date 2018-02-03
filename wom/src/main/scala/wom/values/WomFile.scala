@@ -5,13 +5,18 @@ import wom.types._
 import scala.util.{Success, Try}
 
 sealed trait WomFile extends WomValue {
-  def value: String
+  def hostPath: String
+
+  def containerPath: String
 
   def womFileType: WomFileType
 
   final def womType: WomType = womFileType
 
-  override def valueString = value
+  // Note this picks the host path as the "true" path of this file since container paths are ephemeral and might even
+  // be reassigned if a file is localized to different containers. There are subtypes of `WomFile` such as `WomGlobFile`
+  // that only have container paths and will need to override this.
+  override def valueString = hostPath
 
   /**
     * Converts the location using f() recursively converting any files referred to by this file.
@@ -29,7 +34,7 @@ sealed trait WomFile extends WomValue {
     * @see [[wom.values.WomValue.collectAsSeq]]
     * @see [[wom.WomFileMapper.mapWomFiles]]
     */
-  def mapFile(f: String => String): WomFile
+  def assignContainerPath(f: String => String): WomFile
 
   /**
     * Returns the WomPrimitiveFile instances recursively referenced by this instance.
@@ -44,11 +49,11 @@ sealed trait WomFile extends WomValue {
     this match {
       case womMaybeListedDirectory: WomMaybeListedDirectory =>
         womMaybeListedDirectory.listingOption.getOrElse(Nil).toList match {
-          case Nil => womMaybeListedDirectory.valueOption.toList.map(WomUnlistedDirectory)
+          case Nil => womMaybeListedDirectory.hostPathOption.toList.map(WomUnlistedDirectory)
           case list => list.flatMap(_.flattenFiles)
         }
       case womMaybePopulatedFile: WomMaybePopulatedFile =>
-        val primaryFiles: Seq[WomPrimitiveFile] = womMaybePopulatedFile.valueOption.toList.map(WomSingleFile)
+        val primaryFiles: Seq[WomPrimitiveFile] = womMaybePopulatedFile.hostPathOption.toList.map(WomSingleFile(_))
         womMaybePopulatedFile.secondaryFiles.foldLeft(primaryFiles) {
           (womFiles, secondaryFile) =>
             womFiles ++ secondaryFile.flattenFiles
@@ -78,56 +83,63 @@ sealed trait WomPrimitiveFile extends WomFile with WomPrimitive
   * Should not be passed into command line generation. Instead, the execution engine should create a WomListedDirectory
   * locating the files/directories within the `value` and filling in the listing.
   *
-  * @param value The location of the directory, possibly in the cloud.
+  * @param hostPath The location of the directory, possibly in the cloud.
   */
-final case class WomUnlistedDirectory(value: String) extends WomPrimitiveFile {
+final case class WomUnlistedDirectory(hostPath: String) extends WomPrimitiveFile {
+
+  override def containerPath: String = ???
+
   override val womFileType: WomFileType = WomUnlistedDirectoryType
 
-  override def toWomString = s""""$value""""
+  override def toWomString = s""""$hostPath""""
 
   override def add(rhs: WomValue): Try[WomValue] = rhs match {
-    case r: WomString => Success(this.copy(value = value + r.value))
+    case r: WomString => Success(this.copy(hostPath = hostPath + r.value))
     case r: WomOptionalValue => evaluateIfDefined("+", r, add)
-    case _ => invalid(s"$value + $rhs")
+    case _ => invalid(s"$hostPath + $rhs")
   }
 
   override def equals(rhs: WomValue): Try[WomBoolean] = rhs match {
     case r: WomUnlistedDirectory => Success(WomBoolean(this.equals(r)))
-    case r: WomString => Success(WomBoolean(value.equals(r.value)))
+    case r: WomString => Success(WomBoolean(hostPath.equals(r.value)))
     case r: WomOptionalValue => evaluateIfDefined("==", r, equals)
-    case _ => invalid(s"$value == $rhs")
+    case _ => invalid(s"$hostPath == $rhs")
   }
 
-  override def mapFile(f: String => String): WomUnlistedDirectory = {
-    this.copy(value = f(value))
+  override def assignContainerPath(f: String => String): WomUnlistedDirectory = {
+    this.copy(hostPath = f(hostPath))
   }
 }
 
 /**
   * A file with no additional files.
   *
-  * @param value The location of the file, possibly in the cloud.
+  * @param hostPath The location of the file, possibly in the cloud.
+  * @param containerPathOption The location of the file in the container, never in the cloud.
   */
-final case class WomSingleFile(value: String) extends WomPrimitiveFile {
+final case class WomSingleFile(hostPath: String, containerPathOption: Option[String] = None) extends WomPrimitiveFile {
+
+  override def containerPath: String = ???
+
   override val womFileType: WomFileType = WomSingleFileType
 
-  override def toWomString = s""""$value""""
+  override def toWomString = s""""$hostPath""""
 
   override def add(rhs: WomValue): Try[WomValue] = rhs match {
-    case r: WomString => Success(this.copy(value = value + r.value))
+    case r: WomString => Success(this.copy(hostPath = hostPath + r.value))
     case r: WomOptionalValue => evaluateIfDefined("+", r, add)
-    case _ => invalid(s"$value + $rhs")
+    case _ => invalid(s"$hostPath + $rhs")
   }
 
   override def equals(rhs: WomValue): Try[WomBoolean] = rhs match {
     case r: WomSingleFile => Success(WomBoolean(this.equals(r)))
-    case r: WomString => Success(WomBoolean(value.equals(r.value)))
+    case r: WomString => Success(WomBoolean(hostPath.equals(r.value)))
     case r: WomOptionalValue => evaluateIfDefined("==", r, equals)
-    case _ => invalid(s"$value == $rhs")
+    case _ => invalid(s"$hostPath == $rhs")
   }
 
-  override def mapFile(f: String => String): WomSingleFile = {
-    this.copy(value = f(value))
+  override def assignContainerPath(f: String => String): WomSingleFile = {
+    this.copy(hostPath = f(hostPath))
   }
 }
 
@@ -139,86 +151,104 @@ final case class WomSingleFile(value: String) extends WomPrimitiveFile {
   *   Array[File] myBams = glob("outdir/\*.bam")
   * }}}
   *
-  * @param value The path of the glob within the container.
+  * @param containerPath The path of the glob within the container.
   */
-final case class WomGlobFile(value: String) extends WomPrimitiveFile {
+final case class WomGlobFile(containerPath: String) extends WomPrimitiveFile {
+
+  // Supposedly this is always container paths.
+  override val hostPath: String = null
+
+  override def valueString: String = containerPath
+
   override val womFileType: WomFileType = WomGlobFileType
 
-  override def toWomString = s"""glob("$value")"""
+  override def toWomString = s"""glob("$containerPath")"""
 
   override def add(rhs: WomValue): Try[WomValue] = rhs match {
-    case r: WomString => Success(this.copy(value + r.value))
+    case r: WomString => Success(this.copy(containerPath + r.value))
     case r: WomOptionalValue => evaluateIfDefined("+", r, add)
-    case _ => invalid(s"$value + $rhs")
+    case _ => invalid(s"$containerPath + $rhs")
   }
 
   override def equals(rhs: WomValue): Try[WomBoolean] = rhs match {
-    case r: WomGlobFile => Success(WomBoolean(value.equals(r.value) && womType.equals(r.womType)))
-    case r: WomString => Success(WomBoolean(value.toString.equals(r.value.toString)))
+    case r: WomGlobFile => Success(WomBoolean(containerPath.equals(r.containerPath) && womType.equals(r.womType)))
+    case r: WomString => Success(WomBoolean(containerPath.toString.equals(r.value.toString)))
     case r: WomOptionalValue => evaluateIfDefined("==", r, equals)
-    case _ => invalid(s"$value == $rhs")
+    case _ => invalid(s"$containerPath == $rhs")
   }
 
-  override def mapFile(f: String => String): WomGlobFile = this.copy(value = f(value))
+  // Shouldn't be called, right?
+  override def assignContainerPath(f: String => String): WomGlobFile =
+    throw new UnsupportedOperationException("WomGlobFile is always a container path")
 }
 
 
 /**
   * A directory possibly with a listing of other files/directories.
   *
-  * @param valueOption   The location of the directory, possibly in the cloud.
+  * @param hostPathOption   The location of the directory, possibly in the cloud.
+  * @param containerPathOption The location of the directory with respect to the container.
   * @param listingOption An optional listing of files/directories, either supplied by a user or generated by the engine.
   */
-final case class WomMaybeListedDirectory(valueOption: Option[String] = None,
+final case class WomMaybeListedDirectory(hostPathOption: Option[String] = None,
+                                         containerPathOption: Option[String] = None,
                                          listingOption: Option[Seq[WomFile]] = None) extends WomFile {
-  override def value: String = {
-    valueOption.getOrElse(throw new UnsupportedOperationException(s"value is not available: $this"))
-  }
+
+  override def hostPath: String = hostPathOption.getOrElse(
+    throw new UnsupportedOperationException(s"hostPath is not available: $this"))
+
+  override def containerPath: String = containerPathOption.getOrElse(
+    throw new UnsupportedOperationException(s"containerPath is not available: $this"))
 
   override val womFileType: WomFileType = WomMaybeListedDirectoryType
 
   // TODO: WOM: WOMFILE: This isn't even close to a WDL representation (and maybe belongs in WDL?) of this class, but w/o it other areas of the code crash
-  override def toWomString = s""""$value""""
+  override def toWomString = s""""$hostPath""""
 
-  override def mapFile(f: String => String): WomMaybeListedDirectory = {
-    this.copy(valueOption = valueOption.map(f), listingOption.map(_.map(_.mapFile(f))))
+  override def assignContainerPath(f: String => String): WomMaybeListedDirectory = {
+    this.copy(containerPathOption = hostPathOption.map(f), listingOption = listingOption.map(_.map(_.assignContainerPath(f))))
   }
 }
 
 object WomMaybeListedDirectory {
-  def apply(value: String): WomMaybeListedDirectory = WomMaybeListedDirectory(valueOption = Option(value))
+  def apply(value: String): WomMaybeListedDirectory = WomMaybeListedDirectory(hostPathOption = Option(value))
 }
 
 /**
   * A file possibly populated with a path plus optional checksum/size/etc.
   *
-  * @param valueOption    The location of the file, possibly in the cloud.
-  * @param checksumOption An optional checksum of the file contents.
-  * @param sizeOption     An optional size of the file contents in bytes.
-  * @param formatOption   An optional format description of the file contents.
-  * @param contentsOption The optional text contents of the file.
-  * @param secondaryFiles Any files associated with this file.
+  * @param hostPathOption      The location of the file as visible from the host, possibly in the cloud.
+  * @param containerPathOption The location of the file as visible from the container, never a cloud path.
+  * @param checksumOption      An optional checksum of the file contents.
+  * @param sizeOption          An optional size of the file contents in bytes.
+  * @param formatOption        An optional format description of the file contents.
+  * @param contentsOption      The optional text contents of the file.
+  * @param secondaryFiles      Any files associated with this file.
   */
-final case class WomMaybePopulatedFile(valueOption: Option[String] = None,
+final case class WomMaybePopulatedFile(hostPathOption: Option[String] = None,
+                                       containerPathOption: Option[String] = None,
                                        checksumOption: Option[String] = None,
                                        sizeOption: Option[Long] = None,
                                        formatOption: Option[String] = None,
                                        contentsOption: Option[String] = None,
                                        secondaryFiles: Seq[WomFile] = Vector.empty) extends WomFile {
-  override def value: String = {
-    valueOption.getOrElse(throw new UnsupportedOperationException(s"value is not available: $this"))
-  }
+
+  override def hostPath: String = hostPathOption.getOrElse(
+    throw new UnsupportedOperationException(s"hostPath is not available: $this"))
+
+  override def containerPath: String = containerPathOption.getOrElse(
+    throw new UnsupportedOperationException(s"containerPath is not available: $this"))
 
   override val womFileType: WomFileType = WomMaybePopulatedFileType
 
   // TODO: WOM: WOMFILE: This isn't even close to a WDL representation (and maybe belongs in WDL?) of this class, but w/o it other areas of the code crash
-  override def toWomString = s""""$value""""
+  override def toWomString = s""""$hostPath""""
 
-  override def mapFile(f: String => String): WomMaybePopulatedFile = {
-    this.copy(valueOption = valueOption.map(f), secondaryFiles = secondaryFiles.map(_.mapFile(f)))
+  override def assignContainerPath(f: String => String): WomMaybePopulatedFile = {
+    this.copy(containerPathOption = hostPathOption.map(f), secondaryFiles = secondaryFiles.map(_.assignContainerPath(f)))
   }
 }
 
 object WomMaybePopulatedFile {
-  def apply(value: String): WomMaybePopulatedFile = WomMaybePopulatedFile(valueOption = Option(value))
+  def apply(value: String): WomMaybePopulatedFile = WomMaybePopulatedFile(hostPathOption = Option(value))
 }

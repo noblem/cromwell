@@ -160,7 +160,7 @@ object MetadataService {
 
       List(
         MetadataEvent(metadataKey.copy(key = s"${metadataKey.key}:class"), MetadataValue("File")),
-        populated.valueOption |> toPrimitiveEvent(metadataKey, "location"),
+        populated.hostPathOption |> toPrimitiveEvent(metadataKey, "location"),
         populated.checksumOption |> toPrimitiveEvent(metadataKey, "checksum"),
         populated.sizeOption |> toPrimitiveEvent(metadataKey, "size"),
         populated.formatOption |> toPrimitiveEvent(metadataKey, "format"),
@@ -171,7 +171,7 @@ object MetadataService {
       val listing = listedDirectory.listingOption.toList.flatten.toEvents(metadataKey.copy(key = s"${metadataKey.key}:listing"))
       List(
         MetadataEvent(metadataKey.copy(key = s"${metadataKey.key}:class"), MetadataValue("Directory")),
-        listedDirectory.valueOption |> toPrimitiveEvent(metadataKey, "location")
+        listedDirectory.hostPathOption |> toPrimitiveEvent(metadataKey, "location")
       ) ++ listing
     case value =>
       List(MetadataEvent(metadataKey, MetadataValue(value)))

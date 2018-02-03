@@ -112,7 +112,7 @@ trait SharedFileSystemAsyncJobExecutionActor
     * Returns the paths to the file, inside of docker.
     */
   override def mapCommandLineWomFile(womFile: WomFile): WomFile = {
-    womFile mapFile { path =>
+    womFile assignContainerPath { path =>
       val cleanPath = DefaultPathBuilder.build(path).get
       if (isDockerRun) jobPathsWithDocker.toDockerPath(cleanPath).pathAsString else cleanPath.pathAsString
     }

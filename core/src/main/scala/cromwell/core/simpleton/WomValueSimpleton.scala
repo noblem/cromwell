@@ -44,7 +44,7 @@ object WomValueSimpleton {
         case womObjectLike: WomObjectLike => womObjectLike.values flatMap {
           case (key, value) => value.simplify(s"$name:${key.escapeMeta}")
         }
-        case WomMaybeListedDirectory(valueOption, listingOption) =>
+        case WomMaybeListedDirectory(valueOption, _, listingOption) =>
           // This simpleton is not strictly part of the WomFile but is used to record the type of this WomValue so it can
           // be re-built appropriately in the WomValueBuilder
           val classSimpleton = Option(toStringSimpleton(suffix(ClassKey))(DirectoryClass))
@@ -57,7 +57,7 @@ object WomValueSimpleton {
           // This simpleton is not strictly part of the WomFile but is used to record the type of this WomValue so it can
           // be re-built appropriately in the WomValueBuilder
           val classSimpleton = Option(toStringSimpleton(suffix(ClassKey))(FileClass))
-          val valueSimpleton = womMaybePopulatedFile.valueOption.map(toStringSimpleton(suffix("value")))
+          val valueSimpleton = womMaybePopulatedFile.hostPathOption.map(toStringSimpleton(suffix("value")))
           val checksumSimpleton = womMaybePopulatedFile.checksumOption.map(toStringSimpleton(suffix("checksum")))
           val contentsSimpleton = womMaybePopulatedFile.contentsOption.map(toStringSimpleton(suffix("contents")))
           val sizeSimpleton = womMaybePopulatedFile.sizeOption.map(toNumberSimpleton(suffix("size")))

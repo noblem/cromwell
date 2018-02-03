@@ -88,7 +88,7 @@ case class FileEvaluator(valueEvaluator: ValueEvaluator, coerceTo: WomType = Wom
   private def evaluateRecursive(ast: AstNode, anticipatedType: WomType): Try[Seq[WomFile]] = {
     ast match {
       case a: Ast if a.isGlobFunctionCall =>
-        evalValueToWdlFile(a.params.head) map { wdlFile => Seq(WomGlobFile(wdlFile.value)) }
+        evalValueToWdlFile(a.params.head) map { wdlFile => Seq(WomGlobFile(wdlFile.hostPath)) }
       case a: Ast if a.isFunctionCallWithFirstParameterBeingFile =>
         evalValueToWdlFile(a.params.head) match {
           case Success(v) => Success(Seq(v))
