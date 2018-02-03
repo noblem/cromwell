@@ -174,7 +174,7 @@ class WomFileSpec extends FlatSpec with Matchers with TableDrivenPropertyChecks 
   val addTests = Table(
     ("description", "womFile", "expectedPrefix", "expectedSuffix"),
     ("a single directory", singleDir, WomString("prefix/single/dir"), WomUnlistedDirectory("single/dir/suffix")),
-    ("a single file", singleFile, WomString("prefix/single/file"), WomSingleFile("single/file/suffix")),
+    ("a single file", singleFile, WomString("prefix/single/file"), WomSingleFile("single/file/suffix"))
     //("a glob file", globFile, WomString("prefix/glob/*"), WomGlobFile("glob/*/suffix"))
   )
 
