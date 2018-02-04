@@ -247,7 +247,7 @@ object CommandOutputBinding {
       }
     }
     contentsOptionErrorOr map { contentsOption =>
-      WomMaybePopulatedFile(hostPathOption = Option(path), contentsOption = contentsOption)
+      WomMaybePopulatedFile(containerPathOption = Option(path), contentsOption = contentsOption)
     }
   }
 

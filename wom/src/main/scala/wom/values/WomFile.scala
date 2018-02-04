@@ -37,6 +37,11 @@ sealed trait WomFile extends WomValue {
   def assignContainerPath(f: String => String): WomFile
 
   /**
+    * Does the opposite of the method above.
+    */
+  def assignHostPath(f: String => String): WomFile
+
+  /**
     * Returns the WomPrimitiveFile instances recursively referenced by this instance.
     *
     * WomMaybeListedDirectory instances return either just the directory as an WomUnlistedDirectory, or if there is a
@@ -49,7 +54,7 @@ sealed trait WomFile extends WomValue {
     this match {
       case womMaybeListedDirectory: WomMaybeListedDirectory =>
         womMaybeListedDirectory.listingOption.getOrElse(Nil).toList match {
-          case Nil => womMaybeListedDirectory.hostPathOption.toList.map(WomUnlistedDirectory)
+          case Nil => womMaybeListedDirectory.hostPathOption.toList.map(WomUnlistedDirectory(_))
           case list => list.flatMap(_.flattenFiles)
         }
       case womMaybePopulatedFile: WomMaybePopulatedFile =>
@@ -85,11 +90,11 @@ sealed trait WomPrimitiveFile extends WomFile with WomPrimitive
   *
   * @param hostPath The location of the directory, possibly in the cloud.
   */
-final case class WomUnlistedDirectory(hostPath: String) extends WomPrimitiveFile {
-
-  override def containerPath: String = ???
+final case class WomUnlistedDirectory(hostPath: String, containerPathOption: Option[String] = None) extends WomPrimitiveFile {
 
   override val womFileType: WomFileType = WomUnlistedDirectoryType
+
+  override def containerPath = containerPathOption.get
 
   override def toWomString = s""""$hostPath""""
 
@@ -107,7 +112,12 @@ final case class WomUnlistedDirectory(hostPath: String) extends WomPrimitiveFile
   }
 
   override def assignContainerPath(f: String => String): WomUnlistedDirectory = {
-    this.copy(hostPath = f(hostPath))
+    this.copy(containerPathOption = Option(f(hostPath)))
+  }
+
+  override def assignHostPath(f: String => String): WomUnlistedDirectory = {
+    // 😬😬😬
+    this.copy(hostPath = (containerPathOption map f).get)
   }
 }
 
@@ -139,7 +149,12 @@ final case class WomSingleFile(hostPath: String, containerPathOption: Option[Str
   }
 
   override def assignContainerPath(f: String => String): WomSingleFile = {
-    this.copy(hostPath = f(hostPath))
+    this.copy(containerPathOption = Option(f(hostPath)))
+  }
+
+  override def assignHostPath(f: String => String): WomSingleFile = {
+    // 😬😬😬
+    this.copy(hostPath = containerPathOption.map(f).get)
   }
 }
 
@@ -180,6 +195,10 @@ final case class WomGlobFile(containerPath: String) extends WomPrimitiveFile {
   // Shouldn't be called, right?
   override def assignContainerPath(f: String => String): WomGlobFile =
     throw new UnsupportedOperationException("WomGlobFile is always a container path")
+
+  override def assignHostPath(f: String => String): WomGlobFile =
+    throw new UnsupportedOperationException("WomGlobFile is always a container path")
+
 }
 
 
@@ -207,6 +226,10 @@ final case class WomMaybeListedDirectory(hostPathOption: Option[String] = None,
 
   override def assignContainerPath(f: String => String): WomMaybeListedDirectory = {
     this.copy(containerPathOption = hostPathOption.map(f), listingOption = listingOption.map(_.map(_.assignContainerPath(f))))
+  }
+
+  override def assignHostPath(f: String => String): WomMaybeListedDirectory = {
+    this.copy(hostPathOption = containerPathOption.map(f), listingOption = listingOption.map(_.map(_.assignHostPath(f))))
   }
 }
 
@@ -246,6 +269,10 @@ final case class WomMaybePopulatedFile(hostPathOption: Option[String] = None,
 
   override def assignContainerPath(f: String => String): WomMaybePopulatedFile = {
     this.copy(containerPathOption = hostPathOption.map(f), secondaryFiles = secondaryFiles.map(_.assignContainerPath(f)))
+  }
+
+  override def assignHostPath(f: String => String): WomMaybePopulatedFile = {
+    this.copy(hostPathOption = containerPathOption.map(f), secondaryFiles = secondaryFiles.map(_.assignHostPath(f)))
   }
 }
 
