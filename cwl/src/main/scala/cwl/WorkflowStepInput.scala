@@ -113,15 +113,6 @@ object WorkflowStepInput {
       map.map({ case (stepInput, value) => stepInput.parsedId -> value })
     }
   }
-  
-  object Source {
-    object Single {
-      def unapply(source: InputSource): Option[String] = source.select[String]
-    }
-    object Multi {
-      def unapply(source: InputSource): Option[Array[String]] = source.select[Array[String]]
-    }
-  }
 
   def determineValueFromType(mergedSourcesType: Option[WomType],
                              expectedType: Option[MyriadInputType],
