@@ -1,17 +1,11 @@
 package cwl
 
-import cats.data.Validated.Valid
-import cwl.LinkMergeMethod.LinkMergeMethod
-import cwl.WorkflowStep.Run
 import cwl.WorkflowStepInput.InputSource
 import cwl.command.ParentName
-import org.scalacheck.Properties
 import org.scalacheck.Prop._
-import org.scalacheck.Gen._
+import org.scalacheck.Properties
 import shapeless.Coproduct
 import wom.types._
-import wom.values.{WomArray, WomInteger, WomMap, WomString, WomValue}
-import cats.syntax.validated._
 
 object WorkflowStepInputSpec extends Properties("WorkflowStepInput") {
   implicit val pn = ParentName("_")
@@ -26,13 +20,13 @@ object WorkflowStepInputSpec extends Properties("WorkflowStepInput") {
 
   property("imply an array type if parameter is named in scatter operation") = secure {
     val wsi = WorkflowStepInput("h", source = source)
-    WorkflowStepInput.determineType(wsi, Map.empty, Some(stringType), true) == Right(WomMaybeEmptyArrayType(WomStringType))
+    WorkflowStepInput.determineMergeType(wsi, Map.empty, Some(stringType)) == Right(WomStringType)
   }
 
   property("imply an array type if sink parameter is an array") = secure {
     val wsi = WorkflowStepInput("h")
 
-    WorkflowStepInput.determineType(wsi, Map.empty, Some(arrayStringType), false) == Right(WomArrayType(WomStringType))
+    WorkflowStepInput.determineMergeType(wsi, Map.empty, Some(arrayStringType)) == Right(WomArrayType(WomStringType))
   }
 
   property("assert merge_nested is default LinkMergeMethod") = secure {
@@ -49,7 +43,7 @@ object WorkflowStepInputSpec extends Properties("WorkflowStepInput") {
     val stringToType = Map("h" -> WomArrayType(WomStringType), "i" -> WomArrayType(WomStringType))
 
     WorkflowStepInput.
-      determineType(wsi, stringToType, Some(mit), false) == Right(WomArrayType(WomStringType))
+      determineMergeType(wsi, stringToType, Some(mit)) == Right(WomArrayType(WomStringType))
   }
 }
 

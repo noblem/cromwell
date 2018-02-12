@@ -24,9 +24,9 @@ object WorkflowStepInputExpressionSpec extends Properties("Workflow Step Input E
     val i2OutputPort = GraphNodeOutputPort(WomIdentifier("i2"), WomStringType, null)
     val wsi = WorkflowStepInput("s#h", source = Some(inputSource), linkMerge = Some(LinkMergeMethod.MergeFlattened))
 
-    val tpeEither = WorkflowStepInput.determineType(wsi, Map("i1" -> WomArrayType(WomStringType), "i2" -> WomArrayType(WomStringType)), Some(arrayType), false)
-
-    val tpe: WomType = tpeEither.getOrElse(throw new RuntimeException("expected a womType but evaluation of determineType failed"))
+    val mergeTpeEither = WorkflowStepInput.determineMergeType(wsi, Map("i1" -> WomArrayType(WomStringType), "i2" -> WomArrayType(WomStringType)), Some(arrayType))
+    
+    val tpe: WomType = mergeTpeEither.getOrElse(throw new RuntimeException("expected a womType but evaluation of determineType failed"))
 
     val expression = WorkflowStepInputMergeExpression(wsi, tpe, ("i1", i1OutputPort), Map("i2" -> i2OutputPort), Vector.empty)
 

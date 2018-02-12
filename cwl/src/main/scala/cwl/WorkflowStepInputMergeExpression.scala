@@ -23,6 +23,7 @@ final case class WorkflowStepInputMergeExpression(input: WorkflowStepInput,
 
   override def sourceString: String = s"${input.id}-Merge-Expression"
   override def inputs: Set[String] = allStepInputMappings.keySet
+
   override def evaluateValue(inputValues: Map[String, WomValue], ioFunctionSet: IoFunctionSet): ErrorOr[WomValue] = {
     def lookupValue(key: String): ErrorOr[WomValue] =
       inputValues.
@@ -31,24 +32,17 @@ final case class WorkflowStepInputMergeExpression(input: WorkflowStepInput,
 
     def validateSources(sources: List[String]): ErrorOr[List[WomValue]] =
       sources.
-        traverse[ErrorOr, WomValue] {
-        lookupValue
-      }
+        traverse[ErrorOr, WomValue](lookupValue)
 
-    (input.source.map(_.fold(StringOrStringArrayToStringList)), input.effectiveLinkMerge) match {
+    (allStepInputMappings.keySet.toList, input.effectiveLinkMerge) match {
 
       //When we have a single source, simply look it up
-      case (Some(List(source)), LinkMergeMethod.MergeNested) =>
-        lookupValue(source)
+      case (List(source), LinkMergeMethod.MergeNested) => lookupValue(source)
 
       //When we have several sources, validate they are all present and provide them as a nested array
-      case (Some(sources), LinkMergeMethod.MergeNested) =>
+      case (sources, LinkMergeMethod.MergeNested) => validateSources(sources).map(WomArray.apply)
 
-
-        validateSources(sources).map(WomArray.apply)
-
-      case (Some(sources), LinkMergeMethod.MergeFlattened) =>
-
+      case (sources, LinkMergeMethod.MergeFlattened) =>
         val validatedSourceValues: Checked[List[WomValue]] =
           validateSources(sources).toEither
 
@@ -59,14 +53,11 @@ final case class WorkflowStepInputMergeExpression(input: WorkflowStepInput,
         }
 
         //This is the meat of "merge_flattened," where we find arrays and concatenate them to form one array
-        val flattenedValidatedSourceValues: Checked[List[WomValue]] = validatedSourceValues.map(_.flatMap {
-          flatten
-        })
+        val flattenedValidatedSourceValues: Checked[List[WomValue]] = validatedSourceValues.map(_.flatMap(flatten))
 
         flattenedValidatedSourceValues.map(list => WomArray(list)).toValidated
 
-      case (Some(List(id)), _) =>
-        lookupValue(id)
+      case (List(id), _) => lookupValue(id)
     }
   }
 
