@@ -6,7 +6,7 @@ import cromwell.backend.impl.sfs.config.ConfigConstants._
 import cromwell.backend.sfs._
 import cromwell.backend.standard.{StandardAsyncExecutionActorParams, StandardAsyncJob}
 import cromwell.backend.validation.DockerValidation
-import cromwell.core.{NoIoFunctionSet, StandardPaths}
+import cromwell.core.NoIoFunctionSet
 import cromwell.core.path.Path
 import wdl.draft2.model._
 import wdl.transforms.draft2.wdlom2wom._
@@ -195,11 +195,6 @@ class BackgroundConfigAsyncJobExecutionActor(override val standardParams: Standa
     if (isDockerRun) jobScriptArgs(job, "kill", KillDockerTask, Map(DockerCidInput -> dockerCidInputValue))
     else super[BackgroundAsyncJobExecutionActor].killArgs(job)
   }
-
-  // stdout and stderr have fixed names in this backend and need to be assigned explicitly. Other backends
-  // have the standard paths assigned as a side effect of command instantiation, but the config backend
-  // doesn't do regular command instantiation.
-  jobPaths.assignDefaultStandardPaths()
 }
 
 /**

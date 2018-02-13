@@ -53,12 +53,12 @@ trait JobPaths {
   def jobKey: BackendJobDescriptorKey
   lazy val callRoot = callPathBuilder(workflowPaths.workflowRoot, jobKey)
   lazy val callExecutionRoot = callRoot
-  var standardPaths: Unit => StandardPaths = _
 
-  def assignDefaultStandardPaths() = {
-    standardPaths = _ => StandardPaths(
-      output = callExecutionRoot.resolve("stdout"),
-      error = callExecutionRoot.resolve("stderr")
+  // Assign to default stdout and stderr names which may be subsequently overridden.
+  var standardPaths: Unit => StandardPaths = { _ =>
+    StandardPaths(
+      output = callExecutionRoot.resolve(defaultStdoutFilename),
+      error = callExecutionRoot.resolve(defaultStderrFilename)
     )
   }
 
