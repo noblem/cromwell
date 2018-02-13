@@ -55,6 +55,13 @@ trait JobPaths {
   lazy val callExecutionRoot = callRoot
   var standardPaths: Unit => StandardPaths = _
 
+  def assignDefaultStandardPaths() = {
+    standardPaths = _ => StandardPaths(
+      output = callExecutionRoot.resolve("stdout"),
+      error = callExecutionRoot.resolve("stderr")
+    )
+  }
+
   lazy val script = callExecutionRoot.resolve(scriptFilename)
   lazy val dockerCid = callExecutionRoot.resolve(dockerCidFilename)
   lazy val returnCode = callExecutionRoot.resolve(returnCodeFilename)
